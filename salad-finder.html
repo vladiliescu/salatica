@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ce salată fac azi?</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #F8F6F1;
+    --card: #FFFFFF;
+    --primary: #5A7A5C;
+    --primary-light: #E8EFE8;
+    --accent: #C2613A;
+    --accent-light: #FCEEE8;
+    --text: #1C1C1A;
+    --muted: #8A857D;
+    --chip-bg: #EDEAE4;
+    --chip-hover: #E2DED6;
+    --missing: #C5C0B8;
+    --border: #E5E1DA;
+    --shadow: 0 2px 12px rgba(0,0,0,0.06);
+    --shadow-hover: 0 4px 20px rgba(0,0,0,0.1);
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* Header */
+  header {
+    padding: 40px 0 24px;
+    text-align: center;
+  }
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  /* Ingredient sections */
+  .ingredients-panel {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 24px 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 32px;
+  }
+  .category {
+    margin-bottom: 20px;
+  }
+  .category:last-child { margin-bottom: 0; }
+  .category-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .category-label span { font-size: 1rem; }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    background: var(--chip-bg);
+    color: var(--text);
+    transition: all 0.2s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .chip:hover { background: var(--chip-hover); }
+  .chip.selected {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  /* Counter */
+  .counter {
+    text-align: center;
+    margin-bottom: 24px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .counter strong {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  /* Results */
+  .results-header {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    font-weight: 400;
+    margin-bottom: 16px;
+    padding-left: 4px;
+  }
+  .no-results {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+  .no-results .icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+  /* Salad cards */
+  .salad-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .salad-card:hover { box-shadow: var(--shadow-hover); }
+  .salad-card.ready { border-left: 4px solid var(--primary); }
+  .salad-card.almost { border-left: 4px solid var(--accent); }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .card-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    line-height: 1.3;
+  }
+
+  /* Match circle */
+  .match-circle {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    position: relative;
+  }
+  .match-circle svg {
+    transform: rotate(-90deg);
+    width: 48px;
+    height: 48px;
+  }
+  .match-circle .bg-ring {
+    fill: none;
+    stroke: var(--chip-bg);
+    stroke-width: 4;
+  }
+  .match-circle .fg-ring {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease, stroke 0.3s ease;
+  }
+  .match-pct {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  /* Ingredient tags in card */
+  .card-ingredients {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .ing-tag {
+    font-size: 0.78rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+  .ing-tag.have {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .ing-tag.need {
+    background: #F0EEEA;
+    color: var(--missing);
+  }
+
+  /* Dressing & tip */
+  .card-dressing {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .card-dressing strong {
+    font-weight: 600;
+    color: #6B665E;
+  }
+  .card-tip {
+    font-size: 0.82rem;
+    color: var(--accent);
+    font-style: italic;
+    line-height: 1.5;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+  }
+
+  /* Clear button */
+  .clear-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  .clear-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Status badges */
+  .status-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  .status-badge.ready {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .status-badge.almost {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  footer {
+    text-align: center;
+    padding: 32px 0 48px;
+    font-size: 0.78rem;
+    color: var(--missing);
+  }
+
+  @media (max-width: 480px) {
+    header h1 { font-size: 1.7rem; }
+    .ingredients-panel { padding: 18px 16px; }
+    .salad-card { padding: 16px; }
+    .chip { padding: 6px 12px; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Ce salată fac azi?</h1>
+    <p>Alege ce ai în frigider. Eu găsesc rețeta.</p>
+  </header>
+  <div id="app"></div>
+  <footer>Ingrediente de la Lidl · Rețete testate</footer>
+</div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────
+
+const CATEGORIES = [
+  { id: 'baze',       label: 'Baze',            emoji: '🥬' },
+  { id: 'legume',     label: 'Legume',           emoji: '🍅' },
+  { id: 'proteine',   label: 'Proteine',         emoji: '🐟' },
+  { id: 'branzeturi', label: 'Brânzeturi',       emoji: '🧀' },
+  { id: 'pantry',     label: 'Pantry',           emoji: '🫒' },
+  { id: 'ierburi',    label: 'Ierburi',          emoji: '🌿' },
+  { id: 'seminte',    label: 'Semințe & nuci',   emoji: '🥜' },
+  { id: 'fructe',     label: 'Fructe',           emoji: '🍓' },
+];
+
+const INGREDIENTS = [
+  // Baze
+  { id: 'spinach',      name: 'Baby spinach',   cat: 'baze' },
+  { id: 'naut',         name: 'Năut',           cat: 'baze' },
+  { id: 'fasole-rosie', name: 'Fasole roșie',   cat: 'baze' },
+  { id: 'fasole-alba',  name: 'Fasole albă',    cat: 'baze' },
+  // Legume
+  { id: 'rosii',        name: 'Roșii cherry',    cat: 'legume' },
+  { id: 'castravete',   name: 'Castravete',      cat: 'legume' },
+  { id: 'ceapa',        name: 'Ceapă roșie',     cat: 'legume' },
+  { id: 'ardei-gras',   name: 'Ardei gras',      cat: 'legume' },
+  { id: 'ardei-copti',  name: 'Ardei copți',     cat: 'legume' },
+  { id: 'avocado',      name: 'Avocado',         cat: 'legume' },
+  // Proteine
+  { id: 'ton',          name: 'Ton (conservă)',   cat: 'proteine' },
+  { id: 'ton-afumat',   name: 'Ton afumat',       cat: 'proteine' },
+  { id: 'oua',          name: 'Ouă',              cat: 'proteine' },
+  { id: 'halloumi',     name: 'Halloumi',         cat: 'proteine' },
+  // Brânzeturi
+  { id: 'feta',         name: 'Feta',             cat: 'branzeturi' },
+  { id: 'telemea',      name: 'Telemea',          cat: 'branzeturi' },
+  { id: 'parmezan',     name: 'Parmezan',         cat: 'branzeturi' },
+  { id: 'capra',        name: 'Brânză de capră',  cat: 'branzeturi' },
+  { id: 'gorgonzola',   name: 'Gorgonzola',       cat: 'branzeturi' },
+  // Pantry
+  { id: 'kalamata',     name: 'Kalamata',          cat: 'pantry' },
+  { id: 'capere',       name: 'Capere',            cat: 'pantry' },
+  { id: 'rosii-uscate', name: 'Roșii uscate',      cat: 'pantry' },
+  { id: 'anghinare',    name: 'Anghinare (borcan)', cat: 'pantry' },
+  // Ierburi
+  { id: 'patrunjel',    name: 'Pătrunjel',        cat: 'ierburi' },
+  { id: 'busuioc',      name: 'Busuioc',          cat: 'ierburi' },
+  { id: 'menta',        name: 'Mentă',            cat: 'ierburi' },
+  { id: 'coriandru',    name: 'Coriandru',        cat: 'ierburi' },
+  { id: 'oregano',      name: 'Oregano',          cat: 'ierburi' },
+  // Semințe & nuci
+  { id: 'pin',          name: 'Semințe de pin',    cat: 'seminte' },
+  { id: 'floarea',      name: 'Sem. floarea soarelui', cat: 'seminte' },
+  { id: 'susan',        name: 'Semințe de susan',  cat: 'seminte' },
+  { id: 'nuci',         name: 'Nuci',              cat: 'seminte' },
+  { id: 'migdale',      name: 'Migdale',           cat: 'seminte' },
+  // Fructe
+  { id: 'capsuni',      name: 'Căpșuni',           cat: 'fructe' },
+  { id: 'pere',         name: 'Pere',              cat: 'fructe' },
+];
+
+const SALADS = [
+  {
+    name: 'Mediteraneană cu Năut',
+    ingredients: ['naut','rosii','castravete','ceapa','kalamata','feta','oregano'],
+    dressing: 'Oțet de vin roșu, ulei de măsline',
+    tip: 'Clasicul care nu dă greș. Lasă 15 min să se combine aromele.'
+  },
+  {
+    name: 'Italiană cu Năut și Ton',
+    ingredients: ['naut','rosii','ton','kalamata','busuioc','capere'],
+    dressing: 'Oțet de vin roșu, ulei de măsline',
+    tip: 'Ton în ulei de măsline, nu în apă. Tocă măslinele grosier.'
+  },
+  {
+    name: 'Năut cu Ardei Copți',
+    ingredients: ['naut','rosii','ardei-copti','ceapa','patrunjel'],
+    dressing: 'Lămâie, ulei de măsline, boia afumată',
+    tip: 'Ardeii copți din borcan merg perfect. Boia afumată leagă totul.'
+  },
+  {
+    name: 'Tabbouleh cu Năut',
+    ingredients: ['naut','rosii','menta','patrunjel','ceapa'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Ierburi din belșug, nu decorativ. Mentă + pătrunjel în cantități egale.'
+  },
+  {
+    name: 'Năut cu Za\'atar',
+    ingredients: ['naut','rosii','ceapa'],
+    dressing: 'Za\'atar, lămâie, ulei de măsline',
+    tip: 'Simplu și adictiv. Za\'atar-ul și lămâia fac toată treaba.'
+  },
+  {
+    name: 'Fasole Roșie Stil Grecesc',
+    ingredients: ['fasole-rosie','rosii','castravete','kalamata','feta','ceapa','oregano'],
+    dressing: 'Oțet de vin roșu, ulei de măsline',
+    tip: 'Lasă 15–20 min ca fasolea să absoarbă dressingul.'
+  },
+  {
+    name: 'Fasole Roșie Stil Mexican',
+    ingredients: ['fasole-rosie','rosii','ardei-gras','ceapa','coriandru','avocado'],
+    dressing: 'Lime, ulei de măsline, chimion',
+    tip: 'Lime, nu lămâie. Un vârf de chimion în dressing face diferența.'
+  },
+  {
+    name: 'Fasole Roșie cu Avocado și Telemea',
+    ingredients: ['fasole-rosie','avocado','telemea','rosii','ardei-gras','ceapa','coriandru'],
+    dressing: 'Lime, ulei de măsline, chimion',
+    tip: 'Telemeaua joacă rolul queso fresco. Ardeiul dă crocant și dulceață.'
+  },
+  {
+    name: 'Tonno e Fagioli',
+    ingredients: ['fasole-alba','rosii','ton','ceapa','patrunjel'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Combinația italiană clasică. Ton în ulei, fasole cremoasă — perfecțiune simplă.'
+  },
+  {
+    name: 'Fasole Albă Bruschetta',
+    ingredients: ['fasole-alba','rosii','busuioc'],
+    dressing: 'Ulei de măsline, usturoi',
+    tip: 'Bruschetta ca salată. Usturoiul ras în dressing, nu crud peste.'
+  },
+  {
+    name: 'Fasole Albă cu Anghinare',
+    ingredients: ['fasole-alba','rosii','anghinare','kalamata','oregano'],
+    dressing: 'Ulei de măsline, lămâie',
+    tip: 'Antipasto ca salată. Anghinare din borcan, scursă bine.'
+  },
+  {
+    name: 'Spinach cu Feta și Năut',
+    ingredients: ['spinach','naut','rosii','feta','ceapa','pin'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Salată completă de masă. Prăjește semințele de pin la tigaie uscată.'
+  },
+  {
+    name: 'Spinach cu Avocado, Kalamata și Ou',
+    ingredients: ['spinach','avocado','kalamata','oua','rosii','ceapa'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Lămâie, nu oțet — oțetul face avocado-ul să aibă gust murdar. Oul în sferturi.'
+  },
+  {
+    name: 'Spinach cu Roșii Uscate și Parmezan',
+    ingredients: ['spinach','rosii-uscate','kalamata','pin','parmezan'],
+    dressing: 'Lămâie, ulei de măsline, usturoi',
+    tip: 'Roșii uscate și Kalamata sunt intense — parmezanul adaugă umami fără sărătură extra.'
+  },
+  {
+    name: 'Spinach cu Căpșuni și Feta',
+    ingredients: ['spinach','capsuni','migdale','feta'],
+    dressing: 'Oțet balsamic, ulei de măsline',
+    tip: 'Dulce-sărat-crocant. Salată de primăvară/vară perfectă.'
+  },
+  {
+    name: 'Spinach cu Halloumi Prăjit',
+    ingredients: ['spinach','halloumi','rosii','ardei-copti','susan'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Halloumi cald pe spanac rece — contrastul de temperatură face totul.'
+  },
+  {
+    name: 'Spinach cu Pere și Gorgonzola',
+    ingredients: ['spinach','pere','gorgonzola','nuci'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Elegant, pentru o masă mai specială. Pere coapte dar ferme.'
+  },
+  {
+    name: 'Ton Afumat cu Fasole Albă',
+    ingredients: ['fasole-alba','ton-afumat','ceapa','capere','patrunjel'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Caperele sunt cheia — sărătura lor se înțelege perfect cu fumul tonului.'
+  },
+  {
+    name: 'Ton cu Feta Stil Grecesc',
+    ingredients: ['ton','rosii','feta','castravete','kalamata','ceapa','oregano'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Feta sfărâmicioasă, ton în fulgi mari. Bucăți distincte, nu piure.'
+  },
+];
+
+// ─── HELPERS ────────────────────────────────────────────────────
+
+const ingredientMap = {};
+INGREDIENTS.forEach(i => ingredientMap[i.id] = i.name);
+
+function computeMatches(selected) {
+  if (selected.size === 0) return [];
+
+  return SALADS.map(salad => {
+    const have = salad.ingredients.filter(id => selected.has(id));
+    const need = salad.ingredients.filter(id => !selected.has(id));
+    const pct = Math.round((have.length / salad.ingredients.length) * 100);
+    return { ...salad, have, need, pct };
+  })
+  .filter(s => s.have.length >= 1)
+  .sort((a, b) => {
+    if (b.pct !== a.pct) return b.pct - a.pct;
+    return a.need.length - b.need.length;
+  });
+}
+
+// ─── RENDER ─────────────────────────────────────────────────────
+
+const app = document.getElementById('app');
+let selected = new Set();
+
+function render() {
+  const matches = computeMatches(selected);
+  app.innerHTML = renderIngredients() + renderCounter() + renderResults(matches);
+  bindEvents();
+}
+
+function renderIngredients() {
+  let html = '<div class="ingredients-panel">';
+  CATEGORIES.forEach(cat => {
+    const items = INGREDIENTS.filter(i => i.cat === cat.id);
+    if (items.length === 0) return;
+    html += `<div class="category">
+      <div class="category-label"><span>${cat.emoji}</span> ${cat.label}</div>
+      <div class="chips">`;
+    items.forEach(item => {
+      const sel = selected.has(item.id) ? ' selected' : '';
+      html += `<button class="chip${sel}" data-id="${item.id}">${item.name}</button>`;
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderCounter() {
+  if (selected.size === 0) return '';
+  return `<div class="counter">
+    <strong>${selected.size}</strong> ingredient${selected.size > 1 ? 'e' : ''} selectat${selected.size > 1 ? 'e' : ''}
+    &nbsp;·&nbsp;
+    <button class="clear-btn" id="clear-all">✕ Resetează</button>
+  </div>`;
+}
+
+function renderResults(matches) {
+  if (selected.size === 0) {
+    return `<div class="no-results">
+      <div class="icon">🥗</div>
+      Alege ingredientele pe care le ai.<br>Eu îți arăt ce poți face cu ele.
+    </div>`;
+  }
+
+  if (matches.length === 0) {
+    return `<div class="no-results">
+      <div class="icon">🤔</div>
+      Nicio rețetă nu se potrivește.<br>Încearcă să adaugi o bază: năut, fasole, sau baby spinach.
+    </div>`;
+  }
+
+  let html = `<div class="results-header">${matches.length} salat${matches.length === 1 ? 'ă' : 'e'} posibil${matches.length === 1 ? 'ă' : 'e'}</div>`;
+
+  matches.forEach(s => {
+    const ready = s.pct === 100;
+    const almost = s.pct >= 70 && !ready;
+    const cardClass = ready ? ' ready' : almost ? ' almost' : '';
+    const ringColor = ready ? 'var(--primary)' : almost ? 'var(--accent)' : 'var(--missing)';
+
+    // SVG circle math
+    const r = 20;
+    const circ = 2 * Math.PI * r;
+    const offset = circ - (s.pct / 100) * circ;
+
+    let badge = '';
+    if (ready) badge = '<span class="status-badge ready">Gata de făcut</span>';
+    else if (almost) badge = '<span class="status-badge almost">Aproape</span>';
+
+    html += `<div class="salad-card${cardClass}">
+      <div class="card-top">
+        <div>
+          ${badge}
+          <div class="card-name">${s.name}</div>
+        </div>
+        <div class="match-circle">
+          <svg viewBox="0 0 48 48">
+            <circle class="bg-ring" cx="24" cy="24" r="${r}"/>
+            <circle class="fg-ring" cx="24" cy="24" r="${r}"
+              stroke="${ringColor}"
+              stroke-dasharray="${circ}"
+              stroke-dashoffset="${offset}"/>
+          </svg>
+          <div class="match-pct" style="color:${ringColor}">${s.pct}%</div>
+        </div>
+      </div>
+      <div class="card-ingredients">
+        ${s.have.map(id => `<span class="ing-tag have">${ingredientMap[id]}</span>`).join('')}
+        ${s.need.map(id => `<span class="ing-tag need">${ingredientMap[id]}</span>`).join('')}
+      </div>
+      <div class="card-dressing"><strong>Dressing:</strong> ${s.dressing}</div>
+      <div class="card-tip">${s.tip}</div>
+    </div>`;
+  });
+
+  return html;
+}
+
+function bindEvents() {
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const id = chip.dataset.id;
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      render();
+    });
+  });
+
+  const clearBtn = document.getElementById('clear-all');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      selected.clear();
+      render();
+    });
+  }
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>
