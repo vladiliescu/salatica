@@ -1,12 +1,15 @@
 // Sălățică service worker — offline-capable app shell
-const CACHE = 'salatica-v1';
+const CACHE = 'salatica-v3';
 
 // App shell, relative to the SW scope (works under GitHub Pages subpaths)
 const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon.svg',
+  './icons/icon.svg',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
