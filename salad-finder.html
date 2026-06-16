@@ -499,7 +499,7 @@ function computeMatches(selected) {
     const pct = Math.round((have.length / salad.ingredients.length) * 100);
     return { ...salad, have, need, pct };
   })
-  .filter(s => s.have.length >= 1)
+  .filter(s => s.have.length === selected.size)
   .sort((a, b) => {
     if (b.pct !== a.pct) return b.pct - a.pct;
     return a.need.length - b.need.length;
