@@ -328,6 +328,7 @@ const INGREDIENTS = [
   { id: 'naut',         name: 'Năut',           cat: 'baze' },
   { id: 'fasole-rosie', name: 'Fasole roșie',   cat: 'baze' },
   { id: 'fasole-alba',  name: 'Fasole albă',    cat: 'baze' },
+  { id: 'rucola', name: 'Rucola', cat: 'baze' },
   // Legume
   { id: 'rosii',        name: 'Roșii cherry',    cat: 'legume' },
   { id: 'castravete',   name: 'Castravete',      cat: 'legume' },
@@ -369,6 +370,42 @@ const INGREDIENTS = [
 ];
 
 const SALADS = [
+  {
+    name: 'Spinach cu Ton și Fasole Albă',
+    ingredients: ['spinach','ton','fasole-alba','rosii','ceapa','patrunjel'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Combini două lucruri care merg separat — ton+fasole și ton+spanac. Pe pat de spanac funcționează excelent.'
+  },
+  {
+    name: 'Spinach cu Avocado, Kalamata și Năut',
+    ingredients: ['spinach','avocado','kalamata','naut','ceapa'],
+    dressing: 'Lămâie, ulei de măsline, usturoi, za\'atar opțional',
+    tip: 'Transformă salata de avocado într-o masă completă. Za\'atar dacă ai, oregano dacă nu.'
+  },
+  {
+    name: 'Năut Nord-African',
+    ingredients: ['naut','rosii','ceapa','coriandru'],
+    dressing: 'Lămâie, ulei de măsline, chimion, boia afumată, chili',
+    tip: 'Prăjește năutul la tigaie înainte pentru crunch. Chimion + boia + coriandru = combinația magică.'
+  },
+  {
+    name: 'Fasole Albă cu Ardei Copți și Rucola',
+    ingredients: ['fasole-alba','rosii','ardei-copti','capere','rucola'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Mediteraneană dar cu caracter. Rucola piperată taie prin cremozitatea fasolei.'
+  },
+  {
+    name: 'Ton cu Feta, Capere și Rucola',
+    ingredients: ['ton','rosii','feta','capere','ceapa','rucola'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Varianta piper ată. Rucola + capere + feta = trei tipuri diferite de sărătură-amărăciune.'
+  },
+  {
+    name: 'Salată de Năut Românească',
+    ingredients: ['naut','rosii','ceapa','patrunjel'],
+    dressing: 'Lămâie, ulei de măsline, usturoi',
+    tip: 'Simplă ca o salată de fasole. Usturoiul ras în dressing face toată treaba. Fără feta, fără Kalamata.'
+  },
   {
     name: 'Mediteraneană cu Năut',
     ingredients: ['naut','rosii','castravete','ceapa','kalamata','feta','oregano'],
