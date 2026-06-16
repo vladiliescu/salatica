@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ce salată fac azi?</title>
+<title>Sălățică — ce salată fac azi?</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#5A7A5C">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sălățică">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap');
 
@@ -46,6 +56,13 @@
   header {
     padding: 40px 0 24px;
     text-align: center;
+  }
+  header .logo {
+    width: 64px;
+    height: 64px;
+    display: block;
+    margin: 0 auto 10px;
+    filter: drop-shadow(0 3px 8px rgba(0,0,0,0.08));
   }
   header h1 {
     font-family: 'DM Serif Display', serif;
@@ -301,7 +318,20 @@
 
 <div class="container">
   <header>
-    <h1>Ce salată fac azi?</h1>
+    <svg class="logo" viewBox="0 0 64 64" role="img" aria-label="Sălățică">
+      <!-- leafy greens -->
+      <ellipse cx="24" cy="22" rx="11" ry="7" fill="#5A7A5C" transform="rotate(-22 24 22)"/>
+      <ellipse cx="41" cy="21" rx="10" ry="6.5" fill="#7DA67F" transform="rotate(24 41 21)"/>
+      <ellipse cx="32" cy="16" rx="8.5" ry="6.5" fill="#6E9670"/>
+      <!-- cherry tomatoes & olive -->
+      <circle cx="33" cy="27" r="4.6" fill="#C2613A"/>
+      <circle cx="22" cy="29" r="3.2" fill="#D98C5F"/>
+      <circle cx="43" cy="28" r="2.4" fill="#5A7A5C"/>
+      <!-- bowl -->
+      <path d="M8 31 L56 31 A24 22 0 0 1 8 31 Z" fill="#FFFFFF" stroke="#5A7A5C" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M9 31 L55 31 A23 4 0 0 1 9 31 Z" fill="#E8EFE8"/>
+    </svg>
+    <h1>Sălățică</h1>
     <p>Alege ce ai în frigider. Eu găsesc rețeta.</p>
   </header>
   <div id="app"></div>
@@ -317,7 +347,7 @@ const CATEGORIES = [
   { id: 'proteine',   label: 'Proteine',         emoji: '🐟' },
   { id: 'branzeturi', label: 'Brânzeturi',       emoji: '🧀' },
   { id: 'pantry',     label: 'Pantry',           emoji: '🫒' },
-  { id: 'ierburi',    label: 'Ierburi',          emoji: '??' },
+  { id: 'ierburi',    label: 'Ierburi',          emoji: '🌿' },
   { id: 'seminte',    label: 'Semințe & nuci',   emoji: '🥜' },
   { id: 'fructe',     label: 'Fructe',           emoji: '🍓' },
 ];
@@ -699,6 +729,14 @@ function bindEvents() {
 
 // Initial render
 render();
+
+// ─── PWA ─────────────────────────────────────────────────────────
+// Register relative to the page so it works under GitHub Pages subpaths.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>

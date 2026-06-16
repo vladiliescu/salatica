@@ -1,0 +1,20 @@
+{
+  "name": "Sălățică",
+  "short_name": "Sălățică",
+  "description": "Ce salată fac azi? Alege ce ai în frigider, găsesc rețeta.",
+  "lang": "ro",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8F6F1",
+  "theme_color": "#5A7A5C",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
