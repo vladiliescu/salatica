@@ -1,20 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sălățică">
   <!-- full-bleed background so the icon is maskable (Android squircle/circle safe) -->
   <rect width="512" height="512" rx="112" fill="#EDEAE4"/>
-  <!-- salad bowl art, drawn in 64-unit space and scaled into the safe zone -->
+  <!-- salad-bowl character, drawn in 64-unit space and scaled into the safe zone -->
   <g transform="translate(96 116) scale(5)">
-    <!-- leafy greens (drawn first so the bowl overlaps their base) -->
+    <!-- leafy "hair" (drawn first so the bowl overlaps their base) -->
     <ellipse cx="24" cy="22" rx="11" ry="7" fill="#5A7A5C" transform="rotate(-22 24 22)"/>
     <ellipse cx="41" cy="21" rx="10" ry="6.5" fill="#7DA67F" transform="rotate(24 41 21)"/>
-    <ellipse cx="32" cy="16" rx="8.5" ry="6.5" fill="#6E9670"/>
-    <!-- cherry tomatoes -->
-    <circle cx="33" cy="27" r="4.6" fill="#C2613A"/>
-    <circle cx="22" cy="29" r="3.2" fill="#D98C5F"/>
-    <!-- a seed/olive accent -->
-    <circle cx="43" cy="28" r="2.4" fill="#5A7A5C"/>
-    <!-- bowl -->
+    <ellipse cx="32" cy="15" rx="8.5" ry="6.5" fill="#6E9670"/>
+    <!-- cherry-tomato & olive hair accents -->
+    <circle cx="33" cy="26" r="4.6" fill="#C2613A"/>
+    <circle cx="22" cy="28" r="3.2" fill="#D98C5F"/>
+    <circle cx="43" cy="27" r="2.4" fill="#5A7A5C"/>
+    <!-- bowl = face -->
     <path d="M8 31 L56 31 A24 22 0 0 1 8 31 Z" fill="#FFFFFF" stroke="#5A7A5C" stroke-width="2.2" stroke-linejoin="round"/>
-    <!-- rim highlight -->
-    <path d="M9 31 L55 31 A23 4 0 0 1 9 31 Z" fill="#E8EFE8"/>
+    <!-- rosy cheeks -->
+    <circle cx="20" cy="42" r="2.6" fill="#F4C9B4"/>
+    <circle cx="44" cy="42" r="2.6" fill="#F4C9B4"/>
+    <!-- eyes -->
+    <circle cx="26" cy="39" r="2" fill="#1C1C1A"/>
+    <circle cx="38" cy="39" r="2" fill="#1C1C1A"/>
+    <!-- happy smile -->
+    <path d="M27 44 Q32 49 37 44" fill="none" stroke="#1C1C1A" stroke-width="1.8" stroke-linecap="round"/>
   </g>
 </svg>

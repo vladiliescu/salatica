@@ -1,5 +1,5 @@
 // Sălățică service worker — offline-capable app shell
-const CACHE = 'salatica-v3';
+const CACHE = 'salatica-v4';
 
 // App shell, relative to the SW scope (works under GitHub Pages subpaths)
 const SHELL = [
