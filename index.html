@@ -150,6 +150,15 @@
     margin-bottom: 16px;
     padding-left: 4px;
   }
+  .results-count {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+  .salad-card + .results-header { margin-top: 28px; }
   .no-results {
     text-align: center;
     padding: 48px 20px;
@@ -173,6 +182,7 @@
   .salad-card:hover { box-shadow: var(--shadow-hover); }
   .salad-card.ready { border-left: 4px solid var(--primary); }
   .salad-card.almost { border-left: 4px solid var(--accent); }
+  .salad-card.idea { border-left: 4px solid var(--missing); }
 
   .card-top {
     display: flex;
@@ -306,6 +316,16 @@
   .status-badge.almost {
     background: var(--accent-light);
     color: var(--accent);
+  }
+  .status-badge.idea {
+    background: #F0EEEA;
+    color: var(--muted);
+  }
+  .ideas-more {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    padding: 4px 0 8px;
   }
 
   footer {
@@ -627,11 +647,6 @@ function isSatisfied(reqId, selected) {
   if (selected.has(reqId)) return true;
   return (SUBS[reqId] || []).some(alt => selected.has(alt));
 }
-// Is this selected ingredient actually used by the salad (directly or as a sub)?
-function isRelevant(salad, selId) {
-  if (salad.ingredients.includes(selId)) return true;
-  return (SUBS[selId] || []).some(alt => salad.ingredients.includes(alt));
-}
 // Short "sau …" hint for a recipe ingredient that has substitutes.
 function subHint(id) {
   if (!SUBS[id]) return '';
@@ -645,6 +660,23 @@ function tagLabel(id) {
   return ingredientMap[id] + (hint ? ` <span class="alt">${hint}</span>` : '');
 }
 
+// "Fridge model": the question is "what can I make with what I have?", so
+// ingredients you have but a recipe doesn't use NEVER disqualify it — and a
+// selection that overlaps any recipe is NEVER answered with "nothing". We keep
+// every recipe that uses at least one thing you have, ranked by completeness,
+// and let the tiers (below) prioritise instead of excluding.
+const MAX_MISSING = 2; // up to this many missing → still counts as "Aproape"
+
+// Which bucket a matched recipe falls in:
+//   0 = gata de făcut (nothing missing)
+//   1 = aproape (missing 1–MAX_MISSING and you already have the majority)
+//   2 = idei (everything else that overlaps — ranked, but further off)
+function tierOf(s) {
+  if (s.need.length === 0) return 0;
+  if (s.need.length <= MAX_MISSING && s.have.length >= s.need.length) return 1;
+  return 2;
+}
+
 function computeMatches(selected) {
   if (selected.size === 0) return [];
 
@@ -654,12 +686,11 @@ function computeMatches(selected) {
     const pct = Math.round((have.length / salad.ingredients.length) * 100);
     return { ...salad, have, need, pct };
   })
-  // every selected ingredient must be relevant to the salad (no extras)
-  .filter(s => [...selected].every(selId => isRelevant(s, selId)))
   .filter(s => s.have.length > 0)
   .sort((a, b) => {
-    if (b.pct !== a.pct) return b.pct - a.pct;
-    return a.need.length - b.need.length;
+    if (b.pct !== a.pct) return b.pct - a.pct;                  // most complete first
+    if (a.need.length !== b.need.length) return a.need.length - b.need.length;
+    return a.ingredients.length - b.ingredients.length;        // then simplest
   });
 }
 
@@ -712,54 +743,72 @@ function renderResults(matches) {
   if (matches.length === 0) {
     return `<div class="no-results">
       <div class="icon">🤔</div>
-      Nicio rețetă nu se potrivește.<br>Încearcă să adaugi o bază: năut, fasole, sau baby spinach.
+      Niciuna din rețete nu folosește ce ai ales.<br>Încearcă o bază: năut, fasole, sau baby spinach.
     </div>`;
   }
 
-  let html = `<div class="results-header">${matches.length} salat${matches.length === 1 ? 'ă' : 'e'} posibil${matches.length === 1 ? 'ă' : 'e'}</div>`;
+  const IDEAS_CAP = 8;
+  const ready  = matches.filter(s => tierOf(s) === 0);
+  const almost = matches.filter(s => tierOf(s) === 1);
+  const ideas  = matches.filter(s => tierOf(s) === 2);
 
-  matches.forEach(s => {
-    const ready = s.pct === 100;
-    const almost = s.pct >= 70 && !ready;
-    const cardClass = ready ? ' ready' : almost ? ' almost' : '';
-    const ringColor = ready ? 'var(--primary)' : almost ? 'var(--accent)' : 'var(--missing)';
-
-    // SVG circle math
-    const r = 20;
-    const circ = 2 * Math.PI * r;
-    const offset = circ - (s.pct / 100) * circ;
-
-    let badge = '';
-    if (ready) badge = '<span class="status-badge ready">Gata de făcut</span>';
-    else if (almost) badge = '<span class="status-badge almost">Aproape</span>';
-
-    html += `<div class="salad-card${cardClass}">
-      <div class="card-top">
-        <div>
-          ${badge}
-          <div class="card-name">${s.name}</div>
-        </div>
-        <div class="match-circle">
-          <svg viewBox="0 0 48 48">
-            <circle class="bg-ring" cx="24" cy="24" r="${r}"/>
-            <circle class="fg-ring" cx="24" cy="24" r="${r}"
-              stroke="${ringColor}"
-              stroke-dasharray="${circ}"
-              stroke-dashoffset="${offset}"/>
-          </svg>
-          <div class="match-pct" style="color:${ringColor}">${s.pct}%</div>
-        </div>
-      </div>
-      <div class="card-ingredients">
-        ${s.have.map(id => `<span class="ing-tag have">${tagLabel(id)}</span>`).join('')}
-        ${s.need.map(id => `<span class="ing-tag need">${tagLabel(id)}</span>`).join('')}
-      </div>
-      <div class="card-dressing"><strong>Dressing:</strong> ${s.dressing}</div>
-      <div class="card-tip">${s.tip}</div>
-    </div>`;
-  });
-
+  let html = '';
+  if (ready.length) {
+    html += `<div class="results-header">Gata de făcut <span class="results-count">${ready.length}</span></div>`;
+    html += ready.map(renderCard).join('');
+  }
+  if (almost.length) {
+    html += `<div class="results-header">Aproape — îți mai trebuie 1–2 <span class="results-count">${almost.length}</span></div>`;
+    html += almost.map(renderCard).join('');
+  }
+  if (ideas.length) {
+    html += `<div class="results-header">Idei cu ce ai <span class="results-count">${ideas.length}</span></div>`;
+    html += ideas.slice(0, IDEAS_CAP).map(renderCard).join('');
+    if (ideas.length > IDEAS_CAP) {
+      html += `<div class="ideas-more">+ încă ${ideas.length - IDEAS_CAP} dacă mai adaugi câteva ingrediente</div>`;
+    }
+  }
   return html;
+}
+
+function renderCard(s) {
+  const tier = tierOf(s);
+  const cardClass = tier === 0 ? ' ready' : tier === 1 ? ' almost' : ' idea';
+  const ringColor = tier === 0 ? 'var(--primary)' : tier === 1 ? 'var(--accent)' : 'var(--missing)';
+
+  // SVG circle math
+  const r = 20;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (s.pct / 100) * circ;
+
+  const badge = tier === 0
+    ? ''
+    : `<span class="status-badge ${tier === 1 ? 'almost' : 'idea'}">Lipsește ${s.need.length}</span>`;
+
+  return `<div class="salad-card${cardClass}">
+    <div class="card-top">
+      <div>
+        ${badge}
+        <div class="card-name">${s.name}</div>
+      </div>
+      <div class="match-circle">
+        <svg viewBox="0 0 48 48">
+          <circle class="bg-ring" cx="24" cy="24" r="${r}"/>
+          <circle class="fg-ring" cx="24" cy="24" r="${r}"
+            stroke="${ringColor}"
+            stroke-dasharray="${circ}"
+            stroke-dashoffset="${offset}"/>
+        </svg>
+        <div class="match-pct" style="color:${ringColor}">${s.pct}%</div>
+      </div>
+    </div>
+    <div class="card-ingredients">
+      ${s.have.map(id => `<span class="ing-tag have">${tagLabel(id)}</span>`).join('')}
+      ${s.need.map(id => `<span class="ing-tag need">${tagLabel(id)}</span>`).join('')}
+    </div>
+    <div class="card-dressing"><strong>Dressing:</strong> ${s.dressing}</div>
+    <div class="card-tip">${s.tip}</div>
+  </div>`;
 }
 
 function bindEvents() {

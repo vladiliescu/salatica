@@ -64,13 +64,13 @@ Conversația a stabilit un set clar de reguli pe care utilizatorul le-a validat 
 
 **Dressingul nu e selectabil** — am decis ca ingredientele de dressing (ulei, lămâie, oțet, sare, piper) să fie notate pe fiecare rețetă, nu selectabile. Motivul: toată lumea are ulei și sare, iar tipul de acid (lămâie/oțet/lime) e legat de rețetă, nu de ce „ai în frigider."
 
-**Match percentage cu cerc SVG** — fiecare card de salată arată un cerc de progres cu procentul de ingrediente pe care le ai. Verde = gata de făcut (100%). Portocaliu = aproape (70%+). Gri = potrivire parțială. Cercul e mic (48px) și nu domină cardul.
+**Match percentage cu cerc SVG** — fiecare card de salată arată un cerc de progres cu procentul de ingrediente pe care le ai din rețetă. Verde = gata de făcut (100%, nu lipsește nimic). Portocaliu = aproape (îți mai trebuie 1–2). Cercul e mic (48px) și nu domină cardul.
 
 **Ingrediente „have" vs. „need"** — în fiecare card, ingredientele pe care le ai sunt tag-uri verzi, cele care îți lipsesc sunt gri. Utilizatorul vede instant ce trebuie să mai cumpere.
 
 **Tips pe fiecare rețetă** — fiecare card include un sfat din conversația noastră (italic, culoare accent). Acestea nu sunt sfaturi generice de pe internet, ci concluzii specifice din discuțiile noastre.
 
-**Status badges** — „Gata de făcut" (verde) și „Aproape" (portocaliu) ca badge-uri mici deasupra numelui salatei. Dau prioritate vizuală fără a necesita citirea procentului.
+**Secțiuni de rezultate** — rezultatele sunt împărțite în trei grupuri cu titlu propriu: „Gata de făcut" (verde, nu lipsește nimic), „Aproape — îți mai trebuie 1–2" (portocaliu) și „Idei cu ce ai" (gri, mai departe). În grupurile „aproape" și „idei", fiecare card poartă un badge „Lipsește N" care spune exact câte ingrediente mai sunt necesare. Astfel prioritatea se vede din structură, nu doar din procent — iar utilizatorul nu primește niciodată un ecran gol când are ingrediente selectate.
 
 
 ## Decizii de design — vizual
@@ -94,7 +94,12 @@ Conversația a stabilit un set clar de reguli pe care utilizatorul le-a validat 
 
 **Ingrediente interschimbabile** — anumite ingrediente joacă același rol și pot fi folosite unul în locul altuia. Sunt definite în grupuri (`SUB_GROUPS`): **feta ⇄ telemea** (brânză albă sărată) și **semințe de pin ⇄ floarea soarelui ⇄ dovleac** (crocant prăjit). Dacă o rețetă cere feta dar ai telemea, rețeta se potrivește — dar cardul afișează tot ingredientul canonic al rețetei, cu un indiciu discret („sau telemea"). Astfel știi mereu pentru ce a fost gândită rețeta, dar nu ești blocat de un singur ingredient. Regula din principiile culinare rămâne: nu folosi *ambele* membre ale unui grup în aceeași salată (dublu sărat-cremos).
 
-**Algoritmul de matching** — pentru fiecare salată: (ingrediente din rețetă satisfăcute, direct sau printr-un substitut) / (total ingrediente din rețetă) × 100. Sortare: descrescător după procent, apoi crescător după ingrediente lipsă (la egalitate de procent, salata mai simplă apare prima). Filtru: fiecare ingredient selectat trebuie să fie relevant pentru salată (direct sau ca substitut) — nu apar salate care ignoră ce ai ales.
+**Algoritmul de matching (model „frigider")** — întrebarea aplicației e „ce pot face cu ce am?", cu două reguli care decurg din asta:
+
+1. **Ingredientele în plus nu descalifică niciodată o rețetă.** Dacă ai ceva ce o rețetă nu folosește, rețeta tot apare — un frigider mai plin înseamnă mai multe opțiuni, nu mai puține (opusul comportamentului inițial, unde un ingredient în plus ascundea rețete).
+2. **Selecția ta nu primește niciodată „nimic".** Orice rețetă care folosește măcar un ingredient pe care îl ai apare în rezultate. Pragurile de mai jos doar *prioritizează*, nu *exclud* — așa că „am doar ton" îți arată salatele cu ton, nu un ecran gol.
+
+Pentru fiecare salată calculăm câte ingrediente ai (direct sau printr-un substitut) din total → procent, și o încadrăm într-un nivel (`tierOf`): **gata de făcut** (nu lipsește nimic), **aproape** (lipsesc 1–2 și ai deja majoritatea rețetei), sau **idei** (restul — rețete în care intră ce ai, dar mai departe). Sortare în fiecare nivel: cea mai completă întâi. Nivelul „idei" e plafonat (8 carduri) ca un singur ingredient foarte comun să nu umple ecranul.
 
 
 ## Inventarul rețetelor
