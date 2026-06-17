@@ -242,6 +242,11 @@
     background: #F0EEEA;
     color: var(--missing);
   }
+  .ing-tag .alt {
+    font-weight: 400;
+    opacity: 0.65;
+    font-size: 0.92em;
+  }
 
   /* Dressing & tip */
   .card-dressing {
@@ -383,7 +388,6 @@ const INGREDIENTS = [
   { id: 'feta',         name: 'Feta',             cat: 'branzeturi' },
   { id: 'telemea',      name: 'Telemea',          cat: 'branzeturi' },
   { id: 'parmezan',     name: 'Parmezan',         cat: 'branzeturi' },
-  { id: 'capra',        name: 'Brânză de capră',  cat: 'branzeturi' },
   { id: 'gorgonzola',   name: 'Gorgonzola',       cat: 'branzeturi' },
   // Pantry
   { id: 'kalamata',     name: 'Kalamata',          cat: 'pantry' },
@@ -399,9 +403,9 @@ const INGREDIENTS = [
   // Semințe & nuci
   { id: 'pin',          name: 'Semințe de pin',    cat: 'seminte' },
   { id: 'floarea',      name: 'Sem. floarea soarelui', cat: 'seminte' },
+  { id: 'dovleac',      name: 'Semințe de dovleac', cat: 'seminte' },
   { id: 'susan',        name: 'Semințe de susan',  cat: 'seminte' },
   { id: 'nuci',         name: 'Nuci',              cat: 'seminte' },
-  { id: 'migdale',      name: 'Migdale',           cat: 'seminte' },
   // Fructe
 
   { id: 'struguri',     name: 'Struguri',          cat: 'fructe' },
@@ -523,22 +527,10 @@ const SALADS = [
     tip: 'Roșii uscate și Kalamata sunt intense — parmezanul adaugă umami fără sărătură extra.'
   },
   {
-    name: 'Spinach cu Căpșuni și Feta',
-    ingredients: ['spinach','capsuni','migdale','feta'],
-    dressing: 'Oțet balsamic, ulei de măsline',
-    tip: 'Dulce-sărat-crocant. Salată de primăvară/vară perfectă.'
-  },
-  {
     name: 'Spinach cu Halloumi Prăjit',
     ingredients: ['spinach','halloumi','rosii','ardei-copti','susan'],
     dressing: 'Lămâie, ulei de măsline',
     tip: 'Halloumi cald pe spanac rece — contrastul de temperatură face totul.'
-  },
-  {
-    name: 'Spinach cu Pere și Gorgonzola',
-    ingredients: ['spinach','pere','gorgonzola','nuci'],
-    dressing: 'Lămâie, ulei de măsline',
-    tip: 'Elegant, pentru o masă mai specială. Pere coapte dar ferme.'
   },
   {
     name: 'Ton Afumat cu Fasole Albă',
@@ -594,6 +586,24 @@ const SALADS = [
     dressing: 'Oțet de vin roșu, ulei de măsline, usturoi',
     tip: 'Cea mai românească salată din toată lista. Fasole cremoasă, telemea sărată, pătrunjel din belșug.'
   },
+  {
+    name: 'Spinach cu Avocado și Semințe de Dovleac',
+    ingredients: ['spinach','avocado','rosii','ceapa','dovleac'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Semințele de dovleac prăjite dau crocantul care lipsește salatelor cu avocado. 2–3 min la tigaie uscată.'
+  },
+  {
+    name: 'Năut cu Ardei Copți și Dovleac',
+    ingredients: ['naut','ardei-copti','rosii','ceapa','dovleac','patrunjel'],
+    dressing: 'Lămâie, ulei de măsline, boia afumată',
+    tip: 'Ardei copți dulci, năut cremos, semințe de dovleac crocante. Boia afumată leagă totul.'
+  },
+  {
+    name: 'Spinach cu Telemea și Semințe de Dovleac',
+    ingredients: ['spinach','telemea','rosii','dovleac','ceapa'],
+    dressing: 'Lămâie, ulei de măsline',
+    tip: 'Simplă și sățioasă. Telemeaua sărată, dovleacul crocant — sau feta și alte semințe dacă asta ai.'
+  },
 ];
 
 // ─── HELPERS ────────────────────────────────────────────────────
@@ -601,16 +611,52 @@ const SALADS = [
 const ingredientMap = {};
 INGREDIENTS.forEach(i => ingredientMap[i.id] = i.name);
 
+// Interchangeable ingredients: any member satisfies a recipe that calls for
+// another member of the same group. The recipe still displays its canonical
+// ingredient, with a small "sau …" hint so you know what's swappable.
+const SUB_GROUPS = [
+  { ids: ['feta', 'telemea'], hint: 'sau alt tip de brânză albă' },
+  { ids: ['pin', 'floarea', 'dovleac'], hint: 'sau alte semințe' },
+];
+// id → array of substitute ids
+const SUBS = {};
+SUB_GROUPS.forEach(g => g.ids.forEach(id => SUBS[id] = g.ids.filter(x => x !== id)));
+
+// Do we have what this recipe ingredient needs — directly or via a substitute?
+function isSatisfied(reqId, selected) {
+  if (selected.has(reqId)) return true;
+  return (SUBS[reqId] || []).some(alt => selected.has(alt));
+}
+// Is this selected ingredient actually used by the salad (directly or as a sub)?
+function isRelevant(salad, selId) {
+  if (salad.ingredients.includes(selId)) return true;
+  return (SUBS[selId] || []).some(alt => salad.ingredients.includes(alt));
+}
+// Short "sau …" hint for a recipe ingredient that has substitutes.
+function subHint(id) {
+  if (!SUBS[id]) return '';
+  const group = SUB_GROUPS.find(g => g.ids.includes(id));
+  if (group.ids.length === 2) return `sau ${ingredientMap[SUBS[id][0]].toLowerCase()}`;
+  return group.hint;
+}
+// Ingredient tag markup: canonical name + a subtle swap hint when applicable.
+function tagLabel(id) {
+  const hint = subHint(id);
+  return ingredientMap[id] + (hint ? ` <span class="alt">${hint}</span>` : '');
+}
+
 function computeMatches(selected) {
   if (selected.size === 0) return [];
 
   return SALADS.map(salad => {
-    const have = salad.ingredients.filter(id => selected.has(id));
-    const need = salad.ingredients.filter(id => !selected.has(id));
+    const have = salad.ingredients.filter(id => isSatisfied(id, selected));
+    const need = salad.ingredients.filter(id => !isSatisfied(id, selected));
     const pct = Math.round((have.length / salad.ingredients.length) * 100);
     return { ...salad, have, need, pct };
   })
-  .filter(s => s.have.length === selected.size)
+  // every selected ingredient must be relevant to the salad (no extras)
+  .filter(s => [...selected].every(selId => isRelevant(s, selId)))
+  .filter(s => s.have.length > 0)
   .sort((a, b) => {
     if (b.pct !== a.pct) return b.pct - a.pct;
     return a.need.length - b.need.length;
@@ -705,8 +751,8 @@ function renderResults(matches) {
         </div>
       </div>
       <div class="card-ingredients">
-        ${s.have.map(id => `<span class="ing-tag have">${ingredientMap[id]}</span>`).join('')}
-        ${s.need.map(id => `<span class="ing-tag need">${ingredientMap[id]}</span>`).join('')}
+        ${s.have.map(id => `<span class="ing-tag have">${tagLabel(id)}</span>`).join('')}
+        ${s.need.map(id => `<span class="ing-tag need">${tagLabel(id)}</span>`).join('')}
       </div>
       <div class="card-dressing"><strong>Dressing:</strong> ${s.dressing}</div>
       <div class="card-tip">${s.tip}</div>

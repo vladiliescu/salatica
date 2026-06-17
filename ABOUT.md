@@ -90,29 +90,31 @@ Conversația a stabilit un set clar de reguli pe care utilizatorul le-a validat 
 
 **Ingrediente (34 total)** — fiecare ingredient are: id unic (slug), nume afișat (în română), categorie. Am inclus doar ingrediente disponibile constant la Lidl România, nu produse sezoniere rare.
 
-**Salate (19 total)** — fiecare salată are: nume, lista de ingrediente (referințe la id-uri), dressing (text descriptiv), și un tip (sfat din conversație). Toate cele 19 rețete provin direct din conversația noastră.
+**Salate (32 total)** — fiecare salată are: nume, lista de ingrediente (referințe la id-uri), dressing (text descriptiv), și un tip (sfat din conversație). Rețetele provin din conversația noastră, plus câteva adăugate ulterior (ex. cele cu semințe de dovleac).
 
-**Algoritmul de matching** — pentru fiecare salată: (ingrediente selectate care apar în rețetă) / (total ingrediente din rețetă) × 100. Sortare: descrescător după procent, apoi crescător după ingrediente lipsă (la egalitate de procent, salata mai simplă apare prima). Filtru minim: cel puțin 1 ingredient în comun.
+**Ingrediente interschimbabile** — anumite ingrediente joacă același rol și pot fi folosite unul în locul altuia. Sunt definite în grupuri (`SUB_GROUPS`): **feta ⇄ telemea** (brânză albă sărată) și **semințe de pin ⇄ floarea soarelui ⇄ dovleac** (crocant prăjit). Dacă o rețetă cere feta dar ai telemea, rețeta se potrivește — dar cardul afișează tot ingredientul canonic al rețetei, cu un indiciu discret („sau telemea"). Astfel știi mereu pentru ce a fost gândită rețeta, dar nu ești blocat de un singur ingredient. Regula din principiile culinare rămâne: nu folosi *ambele* membre ale unui grup în aceeași salată (dublu sărat-cremos).
+
+**Algoritmul de matching** — pentru fiecare salată: (ingrediente din rețetă satisfăcute, direct sau printr-un substitut) / (total ingrediente din rețetă) × 100. Sortare: descrescător după procent, apoi crescător după ingrediente lipsă (la egalitate de procent, salata mai simplă apare prima). Filtru: fiecare ingredient selectat trebuie să fie relevant pentru salată (direct sau ca substitut) — nu apar salate care ignoră ce ai ales.
 
 
 ## Inventarul rețetelor
 
-Cele 19 salate incluse, grupate pe bază:
+Cele 32 de salate incluse, grupate după baza principală (unele au mai multe baze — ex. spanac + năut — și sunt numărate o singură dată):
 
-**Pe bază de năut (5):** Mediteraneană cu Năut, Italiană cu Năut și Ton, Năut cu Ardei Copți, Tabbouleh cu Năut, Năut cu Za'atar.
+**Pe bază de baby spinach (~12):** cu Ton și Fasole Albă, cu Avocado Kalamata și Năut, cu Feta și Năut, cu Avocado Kalamata și Ou, cu Roșii Uscate și Parmezan, cu Halloumi Prăjit, cu Ton Afumat, cu Struguri și Feta, cu Struguri și Gorgonzola, cu Roșii Cherry Telemea și Ou, cu Avocado și Semințe de Dovleac, cu Telemea și Semințe de Dovleac.
 
-**Pe bază de fasole roșie (3):** Fasole Roșie Stil Grecesc, Fasole Roșie Stil Mexican, Fasole Roșie cu Avocado și Telemea.
+**Pe bază de năut (~9):** Nord-African, Românească, Mediteraneană, Italiană cu Ton, cu Ardei Copți, Tabbouleh, cu Struguri și Mentă, cu Roșii și Telemea, cu Ardei Copți și Dovleac.
 
-**Pe bază de fasole albă (4):** Tonno e Fagioli, Fasole Albă Bruschetta, Fasole Albă cu Anghinare, Ton Afumat cu Fasole Albă.
+**Pe bază de fasole albă (~6):** cu Ardei Copți și Rucola, Tonno e Fagioli, Bruschetta, cu Anghinare, Ton Afumat cu Fasole Albă, cu Roșii și Telemea.
 
-**Pe bază de baby spinach (6):** Spinach cu Feta și Năut, Spinach cu Avocado Kalamata și Ou, Spinach cu Roșii Uscate și Parmezan, Spinach cu Căpșuni și Feta, Spinach cu Halloumi Prăjit, Spinach cu Pere și Gorgonzola.
+**Pe bază de fasole roșie (3):** Stil Grecesc, Stil Mexican, cu Avocado și Telemea.
 
-**Fără bază vegetală (1):** Ton cu Feta Stil Grecesc.
+**Pe bază de ton (fără bază vegetală) (2):** cu Feta Capere și Rucola, cu Feta Stil Grecesc.
 
 
 ## Ce nu am inclus (și de ce)
 
-**Căutare text** — cu 34 de ingrediente și 19 rețete, nu e nevoie. Scanarea vizuală e suficientă la această scară.
+**Căutare text** — cu 34 de ingrediente și 32 de rețete, nu e nevoie. Scanarea vizuală e suficientă la această scară.
 
 **Salvare preferințe (localStorage)** — utilizatorul a cerut un fișier HTML simplu. Adăugarea de persistență ar complica fără beneficiu clar — selecția se face în 10 secunde.
 
