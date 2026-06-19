@@ -79,7 +79,9 @@ Conversația a stabilit un set clar de reguli pe care utilizatorul le-a validat 
 - **Exact ce am ales** — ca mai sus *și* gata de făcut: selecția ta = rețeta. Cel mai strict.
 - **Gata de făcut** — rețete pe care le poți face acum (nu lipsește nimic), dar care pot ignora ingrediente în plus pe care le-ai ales.
 
-Substituțiile contează: dacă o rețetă cere feta și ai ales telemea, telemea e considerată „folosită". Radio-ul nativ (ascuns vizual sub pastile) oferă navigare cu săgețile pentru tastatură; descrierea e `aria-live` ca să fie anunțată la schimbare. „Surprinde-mă" alege o singură rețetă din setul filtrat (preferând cele gata de făcut) și o afișează singură, cu buton de re-roll — în spiritul „nu mă copleși, ia o poziție". Tot blocul apare doar când există o selecție și rezultate.
+Substituțiile contează: dacă o rețetă cere feta și ai ales telemea, telemea e considerată „folosită". Radio-ul nativ (ascuns vizual sub pastile) oferă navigare cu săgețile pentru tastatură; descrierea e `aria-live` ca să fie anunțată la schimbare. Tot blocul apare doar când există o selecție și rezultate.
+
+**„Surprinde-mă" deschide un dialog (popup), nu un card în listă** — alege o singură rețetă din setul filtrat (preferând cele gata de făcut) și o arată suprapus peste pagină, cu „Altă sugestie" (re-roll) și „Închide". Motivul: o sugestie inserată în lista de rezultate se confunda cu rezultatele normale; un dialog o face un moment distinct („uite una pentru tine") și, la închidere, lista rămâne exact unde era. Dialogul e accesibil — `role="dialog"`, `aria-modal`, focusul intră în el, Tab e prins înăuntru, Escape / click pe fundal / „Închide" îl închid și readuc focusul pe butonul „Surprinde-mă"; fundalul nu se mai poate derula cât e deschis.
 
 **Bară de rezultate pe mobil** — panoul de ingrediente e înalt, așa că pe telefon rezultatele cad sub linia de vizibilitate. O bară fixă jos („N gata de făcut ↓") sare la rezultate la tap și dispare singură (IntersectionObserver) când rezultatele intră în cadru. Apare doar pe ecrane înguste (≤700px) și doar când ai o selecție.
 

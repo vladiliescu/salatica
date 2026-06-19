@@ -403,6 +403,66 @@
     margin-top: 6px;
   }
 
+  /* "Surprinde-mă" dialog — a single pick, overlaid so the results list stays put */
+  body.modal-open { overflow: hidden; }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(28,28,26,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: modal-fade 0.18s ease;
+  }
+  .modal {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 18px 18px 20px;
+    width: 100%;
+    max-width: 460px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.28);
+    animation: modal-pop 0.18s ease;
+  }
+  .modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .modal-head h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+  }
+  .modal-close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    color: var(--muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .modal-close:hover { background: var(--chip-bg); color: var(--text); }
+  /* The featured card fills the dialog; no outer margin/hover lift needed here. */
+  .modal .salad-card { margin-bottom: 16px; box-shadow: none; border: 1px solid var(--border); }
+  @keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes modal-pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .modal-backdrop, .modal { animation: none; }
+  }
+
   /* Mobile "jump to results" bar — phone only, fades out once results show */
   .results-bar { display: none; }
   @media (max-width: 700px) {
@@ -861,7 +921,11 @@ function render() {
     renderCounter() +
     renderFilters(allMatches) +
     `<div id="results">${renderResults(matches)}</div>` +
-    renderResultsBar(matches);
+    renderResultsBar(matches) +
+    renderSurpriseModal(matches);
+
+  // Lock background scroll while the surprise dialog is open.
+  document.body?.classList.toggle('modal-open', !!surprise);
 
   bindEvents();
   observeResults();
@@ -935,18 +999,6 @@ function renderResults(matches) {
     </div>`;
   }
 
-  if (surprise) {
-    const pick = matches.find(m => m.name === surprise);
-    if (pick) {
-      return `<div class="results-header">Sugestia mea <span aria-hidden="true">🎲</span></div>
-        ${renderCard(pick)}
-        <div class="surprise-actions">
-          <button type="button" class="clear-btn" id="surprise-again"><span aria-hidden="true">🎲</span> Altă sugestie</button>
-          <button type="button" class="clear-btn" id="surprise-clear">Vezi toate</button>
-        </div>`;
-    }
-  }
-
   const IDEAS_CAP = 8;
   const ready  = matches.filter(s => tierOf(s) === 0);
   const almost = matches.filter(s => tierOf(s) === 1);
@@ -1018,8 +1070,7 @@ function renderResultsBar(matches) {
   if (selected.size === 0 || matches.length === 0) return '';
   const ready = matches.filter(s => tierOf(s) === 0).length;
   let label;
-  if (surprise) label = 'Vezi sugestia ↓';
-  else if (ready) label = `${ready} gata de făcut ↓`;
+  if (ready) label = `${ready} gata de făcut ↓`;
   else {
     const n = matches.length;
     const word = n === 1 ? 'salată' : n >= 20 ? 'de salate' : 'salate';
@@ -1028,6 +1079,34 @@ function renderResultsBar(matches) {
   return `<div class="results-bar" id="results-bar">
     <button type="button" id="results-bar-btn" aria-label="Sari la rezultate">${label}</button>
   </div>`;
+}
+
+// The surprise pick lives in an overlay dialog (not the results list) so it
+// reads as a distinct "here's one for you" moment and dismissing it leaves your
+// browsing position untouched. `matches` is the already-filtered set.
+function renderSurpriseModal(matches) {
+  if (!surprise) return '';
+  const pick = matches.find(m => m.name === surprise);
+  if (!pick) return '';
+  return `<div class="modal-backdrop" id="surprise-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="surprise-title">
+      <div class="modal-head">
+        <h2 id="surprise-title">Sugestia mea <span aria-hidden="true">🎲</span></h2>
+        <button type="button" class="modal-close" id="surprise-close" aria-label="Închide">✕</button>
+      </div>
+      ${renderCard(pick)}
+      <div class="surprise-actions">
+        <button type="button" class="clear-btn" id="surprise-again"><span aria-hidden="true">🎲</span> Altă sugestie</button>
+        <button type="button" class="clear-btn" id="surprise-done">Închide</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function closeSurprise() {
+  surprise = null;
+  render();
+  document.getElementById('surprise-btn')?.focus();
 }
 
 // Pick one recipe from the filtered set, preferring ready-to-make ones. When
@@ -1081,8 +1160,9 @@ function bindEvents() {
     });
   });
 
-  // After picking/re-rolling, land focus on "Altă sugestie" so re-rolling is
-  // a single repeated keypress. pickSurprise() calls render() internally.
+  // Opening / re-rolling lands focus on "Altă sugestie" inside the dialog, so
+  // re-rolling is a single repeated keypress and focus is moved into the modal.
+  // pickSurprise() calls render() internally.
   const roll = () => { pickSurprise(); document.getElementById('surprise-again')?.focus(); };
   const surpriseBtn = document.getElementById('surprise-btn');
   if (surpriseBtn) surpriseBtn.addEventListener('click', roll);
@@ -1090,10 +1170,16 @@ function bindEvents() {
   const surpriseAgain = document.getElementById('surprise-again');
   if (surpriseAgain) surpriseAgain.addEventListener('click', roll);
 
-  const surpriseClear = document.getElementById('surprise-clear');
-  if (surpriseClear) surpriseClear.addEventListener('click', () => {
-    surprise = null;
-    rerenderKeepingFocus('#surprise-btn');
+  const surpriseClose = document.getElementById('surprise-close');
+  if (surpriseClose) surpriseClose.addEventListener('click', closeSurprise);
+
+  const surpriseDone = document.getElementById('surprise-done');
+  if (surpriseDone) surpriseDone.addEventListener('click', closeSurprise);
+
+  // Click on the dim backdrop (but not the dialog itself) closes the dialog.
+  const backdrop = document.getElementById('surprise-modal');
+  if (backdrop) backdrop.addEventListener('click', e => {
+    if (e.target === backdrop) closeSurprise();
   });
 
   const barBtn = document.getElementById('results-bar-btn');
@@ -1117,6 +1203,23 @@ function bindEvents() {
 
 // Initial render
 render();
+
+// Keyboard handling for the surprise dialog: Escape closes it, Tab stays
+// trapped inside. Registered once (not per render) to avoid stacking listeners.
+document.addEventListener('keydown', e => {
+  if (!surprise) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeSurprise(); return; }
+  if (e.key !== 'Tab') return;
+  const modal = document.querySelector('#surprise-modal .modal');
+  if (!modal) return;
+  const focusable = Array.from(
+    modal.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])')
+  ).filter(el => !el.disabled && el.offsetParent !== null);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 
 // ─── PWA ─────────────────────────────────────────────────────────
 // Register relative to the page so it works under GitHub Pages subpaths.

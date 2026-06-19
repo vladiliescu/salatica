@@ -39,8 +39,11 @@ see the matching simulation pattern used during development.
 - `FILTERS` — a single-choice strictness radio (`activeFilter`): Toate (loose
   default) / Folosesc tot ce-am ales / Exact ce am ales / Gata de făcut. Each has
   an `info` string (tooltip + live description line). `usesAllSelected` backs the
-  strict ones (substitute-aware); `applyFilters` narrows the displayed matches,
-  `pickSurprise` features one.
+  strict ones (substitute-aware); `applyFilters` narrows the displayed matches.
+- `pickSurprise` / `renderSurpriseModal` / `closeSurprise` — "Surprinde-mă" shows
+  one pick in an accessible overlay dialog (focus-trapped, Escape/backdrop close),
+  separate from the results list. The dialog keydown handler is registered once,
+  not per render.
 - Module state: `selected` (chips), `activeFilters`, `surprise` (featured recipe
   name). A mobile-only `.results-bar` jumps to results and self-hides via an
   `IntersectionObserver` once they scroll into view.
