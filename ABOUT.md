@@ -72,6 +72,19 @@ Conversația a stabilit un set clar de reguli pe care utilizatorul le-a validat 
 
 **Secțiuni de rezultate** — rezultatele sunt împărțite în trei grupuri cu titlu propriu: „Gata de făcut" (verde, nu lipsește nimic), „Aproape — îți mai trebuie 1–2" (portocaliu) și „Idei cu ce ai" (gri, mai departe). În grupurile „aproape" și „idei", fiecare card poartă un badge „Lipsește N" care spune exact câte ingrediente mai sunt necesare. Astfel prioritatea se vede din structură, nu doar din procent — iar utilizatorul nu primește niciodată un ecran gol când are ingrediente selectate.
 
+**Filtre rapide + „Surprinde-mă"** — un singur radio alege cât de strict caut (nu se combină; are mereu o valoare selectată vizibil). Sub rânduri apare o linie de explicație pentru opțiunea activă, iar fiecare pastilă are și un tooltip cu aceeași descriere. Radio-ul restrânge doar ce se afișează, nu schimbă algoritmul:
+
+- **Toate** (implicit) — model frigider: orice rețetă care folosește *măcar un* ingredient pe care îl ai.
+- **Folosesc tot ce-am ales** — rețete care folosesc *fiecare* ingredient selectat (nimic din ce ai ales nu e ignorat); pot lipsi încă lucruri pe care nu le ai. Util pentru „am X, Y, Z — ce e construit fix pe astea?".
+- **Exact ce am ales** — ca mai sus *și* gata de făcut: selecția ta = rețeta. Cel mai strict.
+- **Gata de făcut** — rețete pe care le poți face acum (nu lipsește nimic), dar care pot ignora ingrediente în plus pe care le-ai ales.
+
+Substituțiile contează: dacă o rețetă cere feta și ai ales telemea, telemea e considerată „folosită". Radio-ul nativ (ascuns vizual sub pastile) oferă navigare cu săgețile pentru tastatură; descrierea e `aria-live` ca să fie anunțată la schimbare. „Surprinde-mă" alege o singură rețetă din setul filtrat (preferând cele gata de făcut) și o afișează singură, cu buton de re-roll — în spiritul „nu mă copleși, ia o poziție". Tot blocul apare doar când există o selecție și rezultate.
+
+**Bară de rezultate pe mobil** — panoul de ingrediente e înalt, așa că pe telefon rezultatele cad sub linia de vizibilitate. O bară fixă jos („N gata de făcut ↓") sare la rezultate la tap și dispare singură (IntersectionObserver) când rezultatele intră în cadru. Apare doar pe ecrane înguste (≤700px) și doar când ai o selecție.
+
+**Accesibilitate** — chips-urile sunt `<button>`-uri cu `aria-pressed` care reflectă selecția; cercul de procent are alternativă text („Ai 4 din 6 ingrediente (67%)") iar SVG-ul decorativ e `aria-hidden`; tag-urile de ingrediente au `aria-label` „ai…"/„îți lipsește…" ca să nu se confunde la cititorul de ecran.
+
 
 ## Decizii de design — vizual
 
@@ -131,8 +144,6 @@ Cele 32 de salate incluse, grupate după baza principală (unele au mai multe ba
 
 
 ## Posibile îmbunătățiri viitoare
-
-**Mod „lipsește puțin"** — filtrare care arată doar salatele cărora le lipsește exact 1 ingredient. Util pentru lista de cumpărături: „dacă mai iau X, pot face 3 salate noi."
 
 **Generare de listă de cumpărături** — selectezi salatele pe care vrei să le faci săptămâna asta, aplicația generează lista consolidată de ingrediente de cumpărat.
 

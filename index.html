@@ -335,6 +335,113 @@
     color: var(--missing);
   }
 
+  /* Screen-reader-only text */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Quick filters + surprise */
+  .filters { margin-bottom: 24px; }
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .filter-radios {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 13px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .filter-chip:hover { border-color: var(--primary); color: var(--primary); }
+  .filter-chip.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+  /* keyboard focus ring on the visually-hidden radio, shown on its pill */
+  .filter-chip:has(:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .filter-chip.surprise {
+    margin-left: auto;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .filter-chip.surprise:hover { background: var(--accent-light); color: var(--accent); }
+
+  .filter-desc {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.45;
+    margin-top: 8px;
+  }
+
+  .surprise-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  /* Mobile "jump to results" bar — phone only, fades out once results show */
+  .results-bar { display: none; }
+  @media (max-width: 700px) {
+    /* Clearance so the fixed bar never permanently covers the footer / last card. */
+    body { padding-bottom: 76px; }
+    .results-bar {
+      display: flex;
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 50;
+      justify-content: center;
+      padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+      background: linear-gradient(to top, var(--bg) 65%, rgba(248,246,241,0));
+      pointer-events: none;
+    }
+    .results-bar button {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      padding: 12px 22px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      cursor: pointer;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .results-bar.hidden button {
+      opacity: 0;
+      transform: translateY(140%);
+      pointer-events: none;
+    }
+  }
+
   @media (max-width: 480px) {
     header h1 { font-size: 1.7rem; }
     .ingredients-panel { padding: 18px 16px; }
@@ -694,15 +801,70 @@ function computeMatches(selected) {
   });
 }
 
+// ─── FILTERS ────────────────────────────────────────────────────
+// A single radio chooses how strict the match is; "Surprinde-mă" picks one
+// recipe from the chosen set so you don't have to — the "take a position"
+// principle. "Toate" is the default and keeps the loose "fridge model".
+
+// Is a selected ingredient actually used by this recipe — directly, or as a
+// stand-in for one of its ingredients (feta⇄telemea, the seed group)?
+function recipeUses(recipeIngredients, selId) {
+  if (recipeIngredients.includes(selId)) return true;
+  return (SUBS[selId] || []).some(alt => recipeIngredients.includes(alt));
+}
+// Does this recipe use every ingredient the user selected (no wasted picks)?
+function usesAllSelected(s) {
+  for (const id of selected) {
+    if (!recipeUses(s.ingredients, id)) return false;
+  }
+  return true;
+}
+
+const FILTERS = [
+  { id: 'all',     label: 'Toate',
+    info: 'Model frigider: orice rețetă care folosește măcar un ingredient pe care îl ai.',
+    test: () => true },
+  { id: 'usesall', label: 'Folosesc tot ce-am ales',
+    info: 'Doar rețete care folosesc fiecare ingredient ales — nimic din ce ai ales nu e ignorat (dar pot lipsi lucruri pe care nu le ai).',
+    test: s => usesAllSelected(s) },
+  { id: 'exact',   label: 'Exact ce am ales',
+    info: 'Doar rețete pe care le poți face acum și care folosesc fix ce ai ales — selecția ta = rețeta. Cel mai strict.',
+    test: s => s.need.length === 0 && usesAllSelected(s) },
+  { id: 'ready',   label: 'Gata de făcut',
+    info: 'Doar rețete pe care le poți face acum; pot ignora ingrediente în plus pe care le-ai ales.',
+    test: s => tierOf(s) === 0 },
+];
+
+function activeFilterDef() {
+  return FILTERS.find(f => f.id === activeFilter) || FILTERS[0];
+}
+function applyFilters(matches) {
+  return matches.filter(activeFilterDef().test);
+}
+
 // ─── RENDER ─────────────────────────────────────────────────────
 
 const app = document.getElementById('app');
 let selected = new Set();
+let activeFilter = 'all';   // which strictness radio is selected (see FILTERS)
+let surprise = null;        // name of the featured recipe when "Surprinde-mă" is on
+let resultsObserver = null; // hides the mobile bar once results scroll into view
 
 function render() {
-  const matches = computeMatches(selected);
-  app.innerHTML = renderIngredients() + renderCounter() + renderResults(matches);
+  const allMatches = computeMatches(selected);
+  const matches = applyFilters(allMatches);
+  // Drop a stale surprise pick that the current selection/filters no longer yield.
+  if (surprise && !matches.some(m => m.name === surprise)) surprise = null;
+
+  app.innerHTML =
+    renderIngredients() +
+    renderCounter() +
+    renderFilters(allMatches) +
+    `<div id="results">${renderResults(matches)}</div>` +
+    renderResultsBar(matches);
+
   bindEvents();
+  observeResults();
 }
 
 function renderIngredients() {
@@ -711,11 +873,11 @@ function renderIngredients() {
     const items = INGREDIENTS.filter(i => i.cat === cat.id);
     if (items.length === 0) return;
     html += `<div class="category">
-      <div class="category-label"><span>${cat.emoji}</span> ${cat.label}</div>
-      <div class="chips">`;
+      <div class="category-label"><span aria-hidden="true">${cat.emoji}</span> ${cat.label}</div>
+      <div class="chips" role="group" aria-label="${cat.label}">`;
     items.forEach(item => {
-      const sel = selected.has(item.id) ? ' selected' : '';
-      html += `<button class="chip${sel}" data-id="${item.id}">${item.name}</button>`;
+      const on = selected.has(item.id);
+      html += `<button type="button" class="chip${on ? ' selected' : ''}" data-id="${item.id}" aria-pressed="${on}">${item.name}</button>`;
     });
     html += '</div></div>';
   });
@@ -732,19 +894,57 @@ function renderCounter() {
   </div>`;
 }
 
+function renderFilters(allMatches) {
+  if (selected.size === 0 || allMatches.length === 0) return '';
+  const radios = FILTERS.map(f => {
+    const on = activeFilter === f.id;
+    return `<label class="filter-chip${on ? ' active' : ''}" title="${f.info}">
+      <input type="radio" class="sr-only" name="filter" value="${f.id}"${on ? ' checked' : ''}>
+      ${f.label}
+    </label>`;
+  }).join('');
+  return `<div class="filters">
+    <div class="filter-row">
+      <div class="filter-radios" role="radiogroup" aria-label="Cât de strict caut">
+        ${radios}
+      </div>
+      <button type="button" class="filter-chip surprise" id="surprise-btn" title="Alege o rețetă la întâmplare din ce ai filtrat"><span aria-hidden="true">🎲</span> Surprinde-mă</button>
+    </div>
+    <p class="filter-desc" aria-live="polite">${activeFilterDef().info}</p>
+  </div>`;
+}
+
 function renderResults(matches) {
   if (selected.size === 0) {
     return `<div class="no-results">
-      <div class="icon">🥗</div>
+      <div class="icon" aria-hidden="true">🥗</div>
       Alege ingredientele pe care le ai.<br>Eu îți arăt ce poți face cu ele.
     </div>`;
   }
 
   if (matches.length === 0) {
+    if (activeFilter !== 'all') {
+      return `<div class="no-results">
+        <div class="icon" aria-hidden="true">🧺</div>
+        Niciun rezultat cu filtrul ăsta.<br>Alege „Toate" sau mai adaugă ingrediente.
+      </div>`;
+    }
     return `<div class="no-results">
-      <div class="icon">🤔</div>
+      <div class="icon" aria-hidden="true">🤔</div>
       Niciuna din rețete nu folosește ce ai ales.<br>Încearcă o bază: năut, fasole, sau baby spinach.
     </div>`;
+  }
+
+  if (surprise) {
+    const pick = matches.find(m => m.name === surprise);
+    if (pick) {
+      return `<div class="results-header">Sugestia mea <span aria-hidden="true">🎲</span></div>
+        ${renderCard(pick)}
+        <div class="surprise-actions">
+          <button type="button" class="clear-btn" id="surprise-again"><span aria-hidden="true">🎲</span> Altă sugestie</button>
+          <button type="button" class="clear-btn" id="surprise-clear">Vezi toate</button>
+        </div>`;
+    }
   }
 
   const IDEAS_CAP = 8;
@@ -791,24 +991,75 @@ function renderCard(s) {
         ${badge}
         <div class="card-name">${s.name}</div>
       </div>
-      <div class="match-circle">
-        <svg viewBox="0 0 48 48">
+      <div class="match-circle" role="img"
+        aria-label="Ai ${s.have.length} din ${s.ingredients.length} ingrediente (${s.pct}%)">
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
           <circle class="bg-ring" cx="24" cy="24" r="${r}"/>
           <circle class="fg-ring" cx="24" cy="24" r="${r}"
             stroke="${ringColor}"
             stroke-dasharray="${circ}"
             stroke-dashoffset="${offset}"/>
         </svg>
-        <div class="match-pct" style="color:${ringColor}">${s.pct}%</div>
+        <div class="match-pct" aria-hidden="true" style="color:${ringColor}">${s.pct}%</div>
       </div>
     </div>
     <div class="card-ingredients">
-      ${s.have.map(id => `<span class="ing-tag have">${tagLabel(id)}</span>`).join('')}
-      ${s.need.map(id => `<span class="ing-tag need">${tagLabel(id)}</span>`).join('')}
+      ${s.have.map(id => `<span class="ing-tag have" aria-label="ai ${ingredientMap[id]}">${tagLabel(id)}</span>`).join('')}
+      ${s.need.map(id => `<span class="ing-tag need" aria-label="îți lipsește ${ingredientMap[id]}">${tagLabel(id)}</span>`).join('')}
     </div>
     <div class="card-dressing"><strong>Dressing:</strong> ${s.dressing}</div>
     <div class="card-tip">${s.tip}</div>
   </div>`;
+}
+
+// Mobile-only bar that jumps to the results. Label leads with the most useful
+// number: how many you can make right now, falling back to the total.
+function renderResultsBar(matches) {
+  if (selected.size === 0 || matches.length === 0) return '';
+  const ready = matches.filter(s => tierOf(s) === 0).length;
+  let label;
+  if (surprise) label = 'Vezi sugestia ↓';
+  else if (ready) label = `${ready} gata de făcut ↓`;
+  else {
+    const n = matches.length;
+    const word = n === 1 ? 'salată' : n >= 20 ? 'de salate' : 'salate';
+    label = `${n} ${word} ↓`;
+  }
+  return `<div class="results-bar" id="results-bar">
+    <button type="button" id="results-bar-btn" aria-label="Sari la rezultate">${label}</button>
+  </div>`;
+}
+
+// Pick one recipe from the filtered set, preferring ready-to-make ones. When
+// re-rolling, exclude the current pick so you always get something different.
+function pickSurprise() {
+  const pool = applyFilters(computeMatches(selected));
+  if (!pool.length) return;
+  const ready = pool.filter(s => tierOf(s) === 0);
+  let choices = ready.length ? ready : pool;
+  if (choices.length > 1) choices = choices.filter(s => s.name !== surprise);
+  surprise = choices[Math.floor(Math.random() * choices.length)].name;
+  render();
+}
+
+// Fade the mobile bar out once the results region scrolls into view.
+function observeResults() {
+  if (resultsObserver) { resultsObserver.disconnect(); resultsObserver = null; }
+  const bar = document.getElementById('results-bar');
+  const results = document.getElementById('results');
+  if (!bar || !results || !('IntersectionObserver' in window)) return;
+  resultsObserver = new IntersectionObserver(entries => {
+    entries.forEach(e => bar.classList.toggle('hidden', e.isIntersecting));
+  }, { threshold: 0, rootMargin: '0px 0px -120px 0px' });
+  resultsObserver.observe(results);
+}
+
+// render() replaces the whole panel via innerHTML, which drops keyboard focus.
+// After a re-render, restore focus to the equivalent control by selector so
+// keyboard/screen-reader users don't get bounced to the top on every toggle.
+function rerenderKeepingFocus(selector) {
+  render();
+  if (selector) document.querySelector(selector)?.focus();
 }
 
 function bindEvents() {
@@ -817,14 +1068,48 @@ function bindEvents() {
       const id = chip.dataset.id;
       if (selected.has(id)) selected.delete(id);
       else selected.add(id);
-      render();
+      rerenderKeepingFocus(`.chip[data-id="${id}"]`);
     });
   });
+
+  document.querySelectorAll('input[name="filter"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      activeFilter = radio.value;
+      // Keep focus on the (re-rendered) selected radio so keyboard arrow-key
+      // navigation through the group keeps working across re-renders.
+      rerenderKeepingFocus(`input[name="filter"][value="${radio.value}"]`);
+    });
+  });
+
+  // After picking/re-rolling, land focus on "Altă sugestie" so re-rolling is
+  // a single repeated keypress. pickSurprise() calls render() internally.
+  const roll = () => { pickSurprise(); document.getElementById('surprise-again')?.focus(); };
+  const surpriseBtn = document.getElementById('surprise-btn');
+  if (surpriseBtn) surpriseBtn.addEventListener('click', roll);
+
+  const surpriseAgain = document.getElementById('surprise-again');
+  if (surpriseAgain) surpriseAgain.addEventListener('click', roll);
+
+  const surpriseClear = document.getElementById('surprise-clear');
+  if (surpriseClear) surpriseClear.addEventListener('click', () => {
+    surprise = null;
+    rerenderKeepingFocus('#surprise-btn');
+  });
+
+  const barBtn = document.getElementById('results-bar-btn');
+  if (barBtn) {
+    barBtn.addEventListener('click', () => {
+      const results = document.getElementById('results');
+      if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 
   const clearBtn = document.getElementById('clear-all');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
       selected.clear();
+      activeFilter = 'all';
+      surprise = null;
       render();
     });
   }

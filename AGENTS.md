@@ -36,6 +36,14 @@ see the matching simulation pattern used during development.
   another; the card still shows the recipe's canonical ingredient + a "sau …"
   hint.
 - `computeMatches` — the matching algorithm. `render*` functions build the DOM.
+- `FILTERS` — a single-choice strictness radio (`activeFilter`): Toate (loose
+  default) / Folosesc tot ce-am ales / Exact ce am ales / Gata de făcut. Each has
+  an `info` string (tooltip + live description line). `usesAllSelected` backs the
+  strict ones (substitute-aware); `applyFilters` narrows the displayed matches,
+  `pickSurprise` features one.
+- Module state: `selected` (chips), `activeFilters`, `surprise` (featured recipe
+  name). A mobile-only `.results-bar` jumps to results and self-hides via an
+  `IntersectionObserver` once they scroll into view.
 
 ## Invariants — check these after editing data
 
@@ -47,8 +55,13 @@ see the matching simulation pattern used during development.
   *and* telemea) — that's the "double salty-creamy" failure mode the recipes
   intentionally avoid.
 
-A quick way to validate after changing data: extract the `INGREDIENTS` and
-`SALADS` arrays and confirm there are no missing ids and no unused chips.
+Run the committed validator after any data edit — it pulls the actual arrays
+out of `index.html` and checks all of the above (plus duplicate ids/names and
+valid categories), exiting non-zero on any violation:
+
+```sh
+node validate.mjs
+```
 
 ## Docs
 
