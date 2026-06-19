@@ -83,6 +83,10 @@ Substituțiile contează: dacă o rețetă cere feta și ai ales telemea, teleme
 
 **„Surprinde-mă" deschide un dialog (popup), nu un card în listă** — alege o singură rețetă din setul filtrat (preferând cele gata de făcut) și o arată suprapus peste pagină, cu „Altă sugestie" (re-roll) și „Închide". Motivul: o sugestie inserată în lista de rezultate se confunda cu rezultatele normale; un dialog o face un moment distinct („uite una pentru tine") și, la închidere, lista rămâne exact unde era. Dialogul e accesibil — `role="dialog"`, `aria-modal`, focusul intră în el, Tab e prins înăuntru, Escape / click pe fundal / „Închide" îl închid și readuc focusul pe butonul „Surprinde-mă"; fundalul nu se mai poate derula cât e deschis.
 
+**Vot pe rețetă (👍/👎)** — fiecare card are două butoane discrete jos-dreapta: un „îmi place" și un „nu-mi place". Votul nu ascunde și nu deblochează nimic — doar *înclină* cât de des apare rețeta. În listă e un criteriu de sortare prioritar (un 👍 urcă rețeta, un 👎 o coboară), deci o rețetă plăcută are mai multe șanse să fie văzută și să încapă sub plafonul de la „Idei", iar una respinsă mai puține. La „Surprinde-mă" e o pondere de eșantionare (👍 ≈ 3×, 👎 ≈ ¼ față de neutru). Decizia cheie: un 👎 *scade* probabilitatea, nu o anulează — rămâne consecvent cu regula „o selecție nu primește niciodată «nimic»". Nivelurile (`tierOf`) rămân oneste pentru că se calculează din completitudine, nu din ordinea de sortare. Butoanele apar pe același card și în lista de rezultate, și în dialogul „Surprinde-mă" (e același `renderCard`).
+
+**Persistență locală + export** — voturile se salvează în `localStorage` (cheia `salatica.votes.v1`), un dicționar `nume rețetă → 1/-1`. Am ales `localStorage`, nu IndexedDB, deliberat: payload-ul e de câteva zeci de intrări, întreaga aplicație se randează *sincron*, iar API-ul asincron al IndexedDB ar fi însemnat ori blocarea primului paint pe un promise, ori un „flash" de stare nevotată — complexitate fără câștig la scara asta. Tot accesul la storage e în `try/catch`, deci în browsere cu storage dezactivat (mod privat) aplicația merge la fel, doar că voturile nu persistă. La încărcare, intrările se curăță (se păstrează doar rețete care încă există și valori `±1`). O acțiune în footer („Exportă preferințele") descarcă voturile ca fișier JSON (`salatica-preferinte.json`, cu `app`/`version`/`exportedAt`); dacă nu ai votat încă nimic, butonul afișează un mesaj scurt în loc să descarce un fișier gol.
+
 **Bară de rezultate pe mobil** — panoul de ingrediente e înalt, așa că pe telefon rezultatele cad sub linia de vizibilitate. O bară fixă jos („N gata de făcut ↓") sare la rezultate la tap și dispare singură (IntersectionObserver) când rezultatele intră în cadru. Apare doar pe ecrane înguste (≤700px) și doar când ai o selecție.
 
 **Accesibilitate** — chips-urile sunt `<button>`-uri cu `aria-pressed` care reflectă selecția; cercul de procent are alternativă text („Ai 4 din 6 ingrediente (67%)") iar SVG-ul decorativ e `aria-hidden`; tag-urile de ingrediente au `aria-label` „ai…"/„îți lipsește…" ca să nu se confunde la cititorul de ecran.
@@ -130,7 +134,17 @@ detaliu e descris în secțiunile de mai sus; aici e doar „ce identificator, u
   pin ⇄ floarea ⇄ dovleac). Selectarea oricărui membru satisface o rețetă care
   cere altul; cardul arată tot ingredientul canonic al rețetei + un indiciu „sau …".
 - `computeMatches` — algoritmul de matching; `tierOf` încadrează în nivel.
-  Funcțiile `render*` construiesc DOM-ul.
+  Fiecare match poartă și `idx` (poziția în `SALADS`, folosită ca handle stabil
+  în DOM pentru butoanele de vot) și `vote` (votul curent, primul criteriu de
+  sortare). Funcțiile `render*` construiesc DOM-ul.
+- **Votare** — `VOTES_KEY`, `votes` (dicționar `nume → ±1`), `loadVotes` /
+  `saveVotes` (cu `try/catch` în jurul `localStorage`, deci sigure și fără DOM —
+  validatorul rulează fișierul fără să arunce), `voteOf`, `setVote` (toggle pe
+  re-click), `voteWeight` + `weightedPick` (eșantionarea ponderată pentru
+  „Surprinde-mă"). Butoanele se randează în `renderCard` (`.vote-btn`) și se
+  leagă în `bindEvents`; focusul se păstrează după re-render, scopat la dialog
+  când clicul vine din modal. `exportVotes` (secțiunea EXPORT, legat o singură
+  dată) descarcă JSON-ul din acțiunea de footer.
 - `FILTERS` / `activeFilter` — radio-ul de strictețe (single-choice). Fiecare
   opțiune are un `info` (tooltip + linia de descriere live). `usesAllSelected`
   stă în spatele variantelor stricte (conștient de substituții); `applyFilters`
@@ -162,7 +176,7 @@ Cele 32 de salate incluse, grupate după baza principală (unele au mai multe ba
 
 **Căutare text** — cu 34 de ingrediente și 32 de rețete, nu e nevoie. Scanarea vizuală e suficientă la această scară.
 
-**Salvare preferințe (localStorage)** — utilizatorul a cerut un fișier HTML simplu. Adăugarea de persistență ar complica fără beneficiu clar — selecția se face în 10 secunde.
+**Salvare preferințe (localStorage)** — *parțial inclus*. Selecția de ingrediente rămâne efemeră (se face în 10 secunde, nu merită persistată), dar **voturile 👍/👎 se salvează** în `localStorage` și sunt exportabile (vezi „Vot pe rețetă" și „Persistență locală + export" mai sus). Diferența: un vot e o preferință de durată asupra unei rețete, nu o stare de moment.
 
 **Porțiuni și cantități** — utilizatorul a cerut separat rețete concise (text simplu). Aplicația e pentru descoperire („ce pot face?"), nu pentru urmărirea rețetei pas cu pas.
 

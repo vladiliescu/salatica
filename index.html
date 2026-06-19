@@ -278,6 +278,37 @@
     margin-top: 10px;
   }
 
+  /* Thumbs up/down — nudge how often a recipe surfaces */
+  .card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .vote-btn {
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 18px;
+    padding: 4px 12px;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .vote-btn:hover { opacity: 1; }
+  .vote-btn.up.on {
+    opacity: 1;
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+  .vote-btn.down.on {
+    opacity: 1;
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
   /* Clear button */
   .clear-btn {
     display: inline-flex;
@@ -334,6 +365,24 @@
     font-size: 0.78rem;
     color: var(--missing);
   }
+  .footer-actions {
+    margin-top: 10px;
+    min-height: 1.2em;
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 0.78rem;
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    padding: 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .link-btn:hover { color: var(--primary); }
+  .footer-msg { color: var(--muted); }
 
   /* Screen-reader-only text */
   .sr-only {
@@ -535,7 +584,13 @@
     <p>Alege ce ai în frigider. Eu găsesc rețeta.</p>
   </header>
   <div id="app"></div>
-  <footer>Ingrediente simple · Rețete testate de Vlad (majoritatea 🥶)</footer>
+  <footer>
+    Ingrediente simple · Rețete testate de Vlad (majoritatea 🥶)
+    <div class="footer-actions">
+      <button type="button" class="link-btn" id="export-votes">Exportă preferințele</button>
+      <span class="footer-msg" id="export-msg" role="status" aria-live="polite"></span>
+    </div>
+  </footer>
 </div>
 
 <script>
@@ -847,18 +902,84 @@ function tierOf(s) {
 function computeMatches(selected) {
   if (selected.size === 0) return [];
 
-  return SALADS.map(salad => {
+  return SALADS.map((salad, idx) => {
     const have = salad.ingredients.filter(id => isSatisfied(id, selected));
     const need = salad.ingredients.filter(id => !isSatisfied(id, selected));
     const pct = Math.round((have.length / salad.ingredients.length) * 100);
-    return { ...salad, have, need, pct };
+    return { ...salad, idx, have, need, pct, vote: voteOf(salad.name) };
   })
   .filter(s => s.have.length > 0)
   .sort((a, b) => {
+    // Your votes come first: a 👍 floats up, a 👎 sinks — so liked recipes are
+    // more likely to be seen (and to survive the "Idei" cap), disliked less so.
+    // Tiers stay honest because tierOf() is computed from completeness, not order.
+    if (b.vote !== a.vote) return b.vote - a.vote;
     if (b.pct !== a.pct) return b.pct - a.pct;                  // most complete first
     if (a.need.length !== b.need.length) return a.need.length - b.need.length;
     return a.ingredients.length - b.ingredients.length;        // then simplest
   });
+}
+
+// ─── VOTES (preferences) ────────────────────────────────────────
+// Thumbs up/down on a recipe nudges how likely it is to surface: in the list
+// it's a sort booster (above), in "Surprinde-mă" it's a sampling weight (below).
+// Kept deliberately soft — a 👎 lowers a recipe's odds but never excludes it,
+// matching the app's "a selection is never answered with nothing" rule.
+//
+// Storage is localStorage, not IndexedDB: the payload is a few dozen
+// name→±1 entries, the whole app renders synchronously, and IndexedDB's async
+// API would mean either blocking first paint on a promise or a flash of
+// unvoted state — complexity with no upside at this size. The try/catch keeps
+// us working in private-mode / storage-disabled browsers (votes just don't
+// persist), and lets the headless validator evaluate this file without a DOM.
+const VOTES_KEY = 'salatica.votes.v1';
+
+function loadVotes() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(VOTES_KEY) || '{}');
+    if (!parsed || typeof parsed !== 'object') return {};
+    // Keep only the recipes that still exist and only valid ±1 values.
+    const names = new Set(SALADS.map(s => s.name));
+    const clean = {};
+    for (const [name, v] of Object.entries(parsed)) {
+      if (names.has(name) && (v === 1 || v === -1)) clean[name] = v;
+    }
+    return clean;
+  } catch { return {}; }
+}
+
+function saveVotes() {
+  try { localStorage.setItem(VOTES_KEY, JSON.stringify(votes)); } catch {}
+}
+
+// -1 (👎), 0 (none), or 1 (👍).
+function voteOf(name) { return votes[name] || 0; }
+
+// Click a thumb: set it, or toggle it back off if it was already set.
+function setVote(name, dir) {
+  if (votes[name] === dir) delete votes[name];
+  else votes[name] = dir;
+  saveVotes();
+}
+
+// Sampling weight for "Surprinde-mă": 👍 ~3× as likely, 👎 ~¼ as likely as a
+// neutral recipe — still reachable, just rarer.
+function voteWeight(name) {
+  const v = voteOf(name);
+  return v === 1 ? 3 : v === -1 ? 0.25 : 1;
+}
+
+// Weighted random pick from a list of matches (by name weight). Falls back to
+// the first item if every weight somehow rounds to zero.
+function weightedPick(pool) {
+  const total = pool.reduce((sum, s) => sum + voteWeight(s.name), 0);
+  if (total <= 0) return pool[0];
+  let r = Math.random() * total;
+  for (const s of pool) {
+    r -= voteWeight(s.name);
+    if (r < 0) return s;
+  }
+  return pool[pool.length - 1];
 }
 
 // ─── FILTERS ────────────────────────────────────────────────────
@@ -906,6 +1027,7 @@ function applyFilters(matches) {
 
 const app = document.getElementById('app');
 let selected = new Set();
+let votes = loadVotes();    // recipe name → 1 (👍) / -1 (👎); persisted in localStorage
 let activeFilter = 'all';   // which strictness radio is selected (see FILTERS)
 let surprise = null;        // name of the featured recipe when "Surprinde-mă" is on
 let resultsObserver = null; // hides the mobile bar once results scroll into view
@@ -1061,6 +1183,14 @@ function renderCard(s) {
     </div>
     <div class="card-dressing"><strong>Dressing:</strong> ${s.dressing}</div>
     <div class="card-tip">${s.tip}</div>
+    <div class="card-actions">
+      <button type="button" class="vote-btn up${s.vote === 1 ? ' on' : ''}"
+        data-vote="1" data-idx="${s.idx}" aria-pressed="${s.vote === 1}"
+        aria-label="Îmi place — arată-mi-o mai des"><span aria-hidden="true">👍</span></button>
+      <button type="button" class="vote-btn down${s.vote === -1 ? ' on' : ''}"
+        data-vote="-1" data-idx="${s.idx}" aria-pressed="${s.vote === -1}"
+        aria-label="Nu-mi place — arată-mi-o mai rar"><span aria-hidden="true">👎</span></button>
+    </div>
   </div>`;
 }
 
@@ -1117,7 +1247,8 @@ function pickSurprise() {
   const ready = pool.filter(s => tierOf(s) === 0);
   let choices = ready.length ? ready : pool;
   if (choices.length > 1) choices = choices.filter(s => s.name !== surprise);
-  surprise = choices[Math.floor(Math.random() * choices.length)].name;
+  // Weighted by your votes: 👍 recipes come up more often, 👎 less.
+  surprise = weightedPick(choices).name;
   render();
 }
 
@@ -1148,6 +1279,21 @@ function bindEvents() {
       if (selected.has(id)) selected.delete(id);
       else selected.add(id);
       rerenderKeepingFocus(`.chip[data-id="${id}"]`);
+    });
+  });
+
+  document.querySelectorAll('.vote-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.idx);
+      const dir = Number(btn.dataset.vote);
+      setVote(SALADS[idx].name, dir);
+      // Keep focus on the thumb just pressed. The same card can appear both in
+      // the list and inside the open surprise dialog, so scope the selector to
+      // the dialog when the click came from there — otherwise focus would land
+      // on the hidden list copy behind the overlay.
+      const inModal = !!btn.closest('#surprise-modal');
+      const scope = inModal ? '#surprise-modal ' : '';
+      rerenderKeepingFocus(`${scope}.vote-btn[data-idx="${idx}"][data-vote="${dir}"]`);
     });
   });
 
@@ -1220,6 +1366,35 @@ document.addEventListener('keydown', e => {
   if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
+
+// ─── EXPORT ─────────────────────────────────────────────────────
+// Footer action: download the saved votes as a JSON file. Bound once because
+// the footer is static markup, outside the re-rendered #app.
+function exportVotes() {
+  const msg = document.getElementById('export-msg');
+  const flash = text => {
+    if (!msg) return;
+    msg.textContent = ` · ${text}`;
+    setTimeout(() => { if (msg.textContent === ` · ${text}`) msg.textContent = ''; }, 4000);
+  };
+  const n = Object.keys(votes).length;
+  if (!n) { flash('Nu ai votat încă nimic.'); return; }
+
+  const payload = { app: 'salatica', version: 1, exportedAt: new Date().toISOString(), votes };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'salatica-preferinte.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Defer revoke so the download has time to grab the blob (revoking in the
+  // same tick is a spec-level race, even if today's browsers tolerate it).
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  flash(`${n} ${n === 1 ? 'preferință exportată' : 'preferințe exportate'}.`);
+}
+document.getElementById('export-votes')?.addEventListener('click', exportVotes);
 
 // ─── PWA ─────────────────────────────────────────────────────────
 // Register relative to the page so it works under GitHub Pages subpaths.
