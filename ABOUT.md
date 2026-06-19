@@ -117,6 +117,32 @@ Substituțiile contează: dacă o rețetă cere feta și ai ales telemea, teleme
 Pentru fiecare salată calculăm câte ingrediente ai (direct sau printr-un substitut) din total → procent, și o încadrăm într-un nivel (`tierOf`): **gata de făcut** (nu lipsește nimic), **aproape** (lipsesc 1–2 și ai deja majoritatea rețetei), sau **idei** (restul — rețete în care intră ce ai, dar mai departe). Sortare în fiecare nivel: cea mai completă întâi. Nivelul „idei" e plafonat (8 carduri) ca un singur ingredient foarte comun să nu umple ecranul.
 
 
+## Harta codului — unde trăiește fiecare lucru (totul în `index.html`)
+
+Pentru agenți/contributori: orientare rapidă în fișierul unic. Comportamentul în
+detaliu e descris în secțiunile de mai sus; aici e doar „ce identificator, unde".
+
+- `CATEGORIES` — grupurile de ingrediente (cu emoji) afișate ca secțiuni.
+- `INGREDIENTS` — fiecare chip selectabil: `{ id, name, cat }`. `id` e slug-ul la
+  care fac referire rețetele; `name` e eticheta afișată în română.
+- `SALADS` — rețetele: `{ name, ingredients: [id…], dressing, tip }`.
+- `SUB_GROUPS` / `SUBS` — ingrediente interschimbabile (feta ⇄ telemea,
+  pin ⇄ floarea ⇄ dovleac). Selectarea oricărui membru satisface o rețetă care
+  cere altul; cardul arată tot ingredientul canonic al rețetei + un indiciu „sau …".
+- `computeMatches` — algoritmul de matching; `tierOf` încadrează în nivel.
+  Funcțiile `render*` construiesc DOM-ul.
+- `FILTERS` / `activeFilter` — radio-ul de strictețe (single-choice). Fiecare
+  opțiune are un `info` (tooltip + linia de descriere live). `usesAllSelected`
+  stă în spatele variantelor stricte (conștient de substituții); `applyFilters`
+  restrânge ce se afișează.
+- `pickSurprise` / `renderSurpriseModal` / `closeSurprise` — „Surprinde-mă" arată
+  o singură rețetă într-un dialog accesibil (focus-trapped, închidere pe
+  Escape/fundal), separat de lista de rezultate. Handler-ul de keydown e
+  înregistrat o singură dată, nu la fiecare render.
+- Stare de modul: `selected` (chips), `activeFilters`, `surprise` (numele rețetei
+  evidențiate). O `.results-bar` doar pe mobil sare la rezultate și se ascunde
+  singură printr-un `IntersectionObserver` când rezultatele intră în cadru.
+
 ## Inventarul rețetelor
 
 Cele 32 de salate incluse, grupate după baza principală (unele au mai multe baze — ex. spanac + năut — și sunt numărate o singură dată):

@@ -1,6 +1,9 @@
 # AGENTS.md — Sălățică
 
-Guidance for AI agents working in this repo.
+Guidance for AI agents working in this repo. This file is meant to stay
+**stable** — it describes how to work here, not what every feature does. For the
+living description of behavior, the recipe/ingredient set, and where things live
+in the code, read **`ABOUT.md`** and keep *that* in sync as you change the app.
 
 ## What this is
 
@@ -25,29 +28,6 @@ won't register over `file://`, but that doesn't affect previewing the UI.)
 For logic checks without a browser, you can `eval` the data/helpers in Node —
 see the matching simulation pattern used during development.
 
-## Where things are (all in `index.html`)
-
-- `CATEGORIES` — ingredient groups (with emoji) shown as sections.
-- `INGREDIENTS` — every selectable chip: `{ id, name, cat }`. `id` is the slug
-  recipes reference; `name` is the Romanian display label.
-- `SALADS` — recipes: `{ name, ingredients: [id…], dressing, tip }`.
-- `SUB_GROUPS` / `SUBS` — interchangeable ingredients (feta ⇄ telemea,
-  pin ⇄ floarea ⇄ dovleac). Selecting any member satisfies a recipe calling for
-  another; the card still shows the recipe's canonical ingredient + a "sau …"
-  hint.
-- `computeMatches` — the matching algorithm. `render*` functions build the DOM.
-- `FILTERS` — a single-choice strictness radio (`activeFilter`): Toate (loose
-  default) / Folosesc tot ce-am ales / Exact ce am ales / Gata de făcut. Each has
-  an `info` string (tooltip + live description line). `usesAllSelected` backs the
-  strict ones (substitute-aware); `applyFilters` narrows the displayed matches.
-- `pickSurprise` / `renderSurpriseModal` / `closeSurprise` — "Surprinde-mă" shows
-  one pick in an accessible overlay dialog (focus-trapped, Escape/backdrop close),
-  separate from the results list. The dialog keydown handler is registered once,
-  not per render.
-- Module state: `selected` (chips), `activeFilters`, `surprise` (featured recipe
-  name). A mobile-only `.results-bar` jumps to results and self-hides via an
-  `IntersectionObserver` once they scroll into view.
-
 ## Invariants — check these after editing data
 
 - **Every `id` in a recipe's `ingredients` must exist in `INGREDIENTS`**, or that
@@ -68,7 +48,10 @@ node validate.mjs
 
 ## Docs
 
-- `ABOUT.md` — the live design doc. Keep it in sync when you change behavior or
-  the recipe/ingredient set.
+- `ABOUT.md` — the **live design doc and code map**. It documents the data model,
+  the matching algorithm, every UI behavior (filters, "Surprinde-mă", the mobile
+  results bar, accessibility), and where each thing lives in `index.html`. This
+  is the doc that moves as the app moves — update it when behavior changes, and
+  leave AGENTS.md alone.
 - `RECIPES.md` — **historic** snapshot of the original conversation. Do not
   update it; it's a record, not a source of truth.
