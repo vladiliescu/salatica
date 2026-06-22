@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Validates the data invariants baked into index.html so a bad recipe edit
 // fails loudly instead of silently producing a recipe that can never reach
-// 100% or a chip no recipe uses. Run with: `node validate.mjs`.
+// 100% or a chip no recipe uses. Run with: `node scripts/validate.mjs`.
 //
 // The data lives inside the single-file app (index.html). Rather than keep a
 // second copy in sync, we pull the actual arrays out of the page's <script>
@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
 import vm from 'node:vm';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const htmlPath = join(here, 'index.html');
+const htmlPath = join(here, '..', 'index.html');
 const html = readFileSync(htmlPath, 'utf8');
 
 // Tolerate attributes on the tag (e.g. `<script defer>`) so a future tweak to

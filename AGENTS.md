@@ -43,7 +43,7 @@ out of `index.html` and checks all of the above (plus duplicate ids/names and
 valid categories), exiting non-zero on any violation:
 
 ```sh
-node validate.mjs
+node scripts/validate.mjs
 ```
 
 ## Docs

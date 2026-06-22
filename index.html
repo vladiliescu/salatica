@@ -962,8 +962,8 @@ function tagLabel(id) {
 // "Fridge model": the question is "what can I make with what I have?", so
 // ingredients you have but a recipe doesn't use NEVER disqualify it — and a
 // selection that overlaps any recipe is NEVER answered with "nothing". We keep
-// every recipe that uses at least one thing you have, ranked by completeness,
-// and let the tiers (below) prioritise instead of excluding.
+// every recipe that uses at least one thing you have, then each filter ranks
+// that set according to its own intent.
 const MAX_MISSING = 2; // up to this many missing → still counts as "Aproape"
 
 // Which bucket a matched recipe falls in:
@@ -985,21 +985,13 @@ function computeMatches(selected) {
     const pct = Math.round((have.length / salad.ingredients.length) * 100);
     return { ...salad, idx, have, need, pct, vote: voteOf(salad.name) };
   })
-  .filter(s => s.have.length > 0)
-  .sort((a, b) => {
-    // Your votes come first: a 👍 floats up, a 👎 sinks — so liked recipes are
-    // more likely to be seen (and to survive the "Idei" cap), disliked less so.
-    // Tiers stay honest because tierOf() is computed from completeness, not order.
-    if (b.vote !== a.vote) return b.vote - a.vote;
-    if (b.pct !== a.pct) return b.pct - a.pct;                  // most complete first
-    if (a.need.length !== b.need.length) return a.need.length - b.need.length;
-    return a.ingredients.length - b.ingredients.length;        // then simplest
-  });
+  .filter(s => s.have.length > 0);
 }
 
 // ─── VOTES (preferences) ────────────────────────────────────────
 // Thumbs up/down on a recipe nudges how likely it is to surface: in the list
-// it's a sort booster (above), in "Surprinde-mă" it's a sampling weight (below).
+// it's a tie-breaker after the active filter's main intent, in "Surprinde-mă"
+// it's a sampling weight (below).
 // Kept deliberately soft — a 👎 lowers a recipe's odds but never excludes it,
 // matching the app's "a selection is never answered with nothing" rule.
 //
@@ -1078,26 +1070,59 @@ function usesAllSelected(s) {
   return true;
 }
 
+function selectedUseCount(s) {
+  let count = 0;
+  for (const id of selected) {
+    if (recipeUses(s.ingredients, id)) count++;
+  }
+  return count;
+}
+
+function compareAll(a, b) {
+  return selectedUseCount(b) - selectedUseCount(a) ||
+    a.need.length - b.need.length ||
+    b.pct - a.pct ||
+    b.vote - a.vote ||
+    a.ingredients.length - b.ingredients.length ||
+    a.idx - b.idx;
+}
+
+function compareCompletion(a, b) {
+  return b.pct - a.pct ||
+    a.need.length - b.need.length ||
+    b.vote - a.vote ||
+    a.ingredients.length - b.ingredients.length ||
+    a.idx - b.idx;
+}
+
+function compareReady(a, b) {
+  return selectedUseCount(b) - selectedUseCount(a) ||
+    b.vote - a.vote ||
+    a.ingredients.length - b.ingredients.length ||
+    a.idx - b.idx;
+}
+
 const FILTERS = [
   { id: 'all',     label: 'Toate',
     info: 'Model frigider: orice rețetă care folosește măcar un ingredient pe care îl ai.',
-    test: () => true },
+    test: () => true,
+    compare: compareAll },
   { id: 'usesall', label: 'Folosesc tot ce-am ales',
     info: 'Doar rețete care folosesc fiecare ingredient ales — nimic din ce ai ales nu e ignorat (dar pot lipsi lucruri pe care nu le ai).',
-    test: s => usesAllSelected(s) },
-  { id: 'exact',   label: 'Exact ce am ales',
-    info: 'Doar rețete pe care le poți face acum și care folosesc fix ce ai ales — selecția ta = rețeta. Cel mai strict.',
-    test: s => s.need.length === 0 && usesAllSelected(s) },
+    test: s => usesAllSelected(s),
+    compare: compareCompletion },
   { id: 'ready',   label: 'Gata de făcut',
     info: 'Doar rețete pe care le poți face acum; pot ignora ingrediente în plus pe care le-ai ales.',
-    test: s => tierOf(s) === 0 },
+    test: s => tierOf(s) === 0,
+    compare: compareReady },
 ];
 
 function activeFilterDef() {
   return FILTERS.find(f => f.id === activeFilter) || FILTERS[0];
 }
 function applyFilters(matches) {
-  return matches.filter(activeFilterDef().test);
+  const filter = activeFilterDef();
+  return matches.filter(filter.test).sort(filter.compare);
 }
 
 // ─── RENDER ─────────────────────────────────────────────────────
@@ -1227,23 +1252,39 @@ function renderResults(matches) {
     </div>`;
   }
 
+  if (activeFilter === 'all') return renderAllResults(matches);
+  return renderTieredResults(matches);
+}
+
+function renderAllResults(matches) {
+  if (selected.size <= 1) return renderTieredResults(matches);
+
+  let html = '';
+  for (let count = selected.size; count > 0; count--) {
+    const group = matches.filter(s => selectedUseCount(s) === count);
+    if (count === selected.size) html += renderSection('Cu tot ce-ai ales', group);
+    else html += renderSection(`Cu ${count} din ${selected.size} ingrediente alese`, group);
+  }
+  return html;
+}
+
+function renderSection(title, matches, count = matches.length) {
+  if (!matches.length) return '';
+  return `<div class="results-header">${title} <span class="results-count">${count}</span></div>` +
+    matches.map(renderCard).join('');
+}
+
+function renderTieredResults(matches) {
   const IDEAS_CAP = 8;
   const ready  = matches.filter(s => tierOf(s) === 0);
   const almost = matches.filter(s => tierOf(s) === 1);
   const ideas  = matches.filter(s => tierOf(s) === 2);
 
   let html = '';
-  if (ready.length) {
-    html += `<div class="results-header">Gata de făcut <span class="results-count">${ready.length}</span></div>`;
-    html += ready.map(renderCard).join('');
-  }
-  if (almost.length) {
-    html += `<div class="results-header">Aproape — îți mai trebuie 1–2 <span class="results-count">${almost.length}</span></div>`;
-    html += almost.map(renderCard).join('');
-  }
+  html += renderSection('Gata de făcut', ready);
+  html += renderSection('Aproape — îți mai trebuie 1–2', almost);
   if (ideas.length) {
-    html += `<div class="results-header">Idei cu ce ai <span class="results-count">${ideas.length}</span></div>`;
-    html += ideas.slice(0, IDEAS_CAP).map(renderCard).join('');
+    html += renderSection('Idei cu ce ai', ideas.slice(0, IDEAS_CAP), ideas.length);
     if (ideas.length > IDEAS_CAP) {
       html += `<div class="ideas-more">+ încă ${ideas.length - IDEAS_CAP} dacă mai adaugi câteva ingrediente</div>`;
     }

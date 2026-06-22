@@ -70,20 +70,19 @@ Conversația a stabilit un set clar de reguli pe care utilizatorul le-a validat 
 
 **Tips pe fiecare rețetă** — fiecare card include un sfat din conversația noastră (italic, culoare accent). Acestea nu sunt sfaturi generice de pe internet, ci concluzii specifice din discuțiile noastre.
 
-**Secțiuni de rezultate** — rezultatele sunt împărțite în trei grupuri cu titlu propriu: „Gata de făcut" (verde, nu lipsește nimic), „Aproape — îți mai trebuie 1–2" (portocaliu) și „Idei cu ce ai" (gri, mai departe). În grupurile „aproape" și „idei", fiecare card poartă un badge „Lipsește N" care spune exact câte ingrediente mai sunt necesare. Astfel prioritatea se vede din structură, nu doar din procent — iar utilizatorul nu primește niciodată un ecran gol când are ingrediente selectate.
+**Secțiuni de rezultate** — rezultatele sunt împărțite în grupuri cu titlu propriu. În `Toate`, când ai ales mai multe ingrediente, apare întâi „Cu tot ce-ai ales", apoi grupuri de tip „Cu 2 din 3 ingrediente alese"; astfel rețetele care respectă mai mult selecția curentă nu sunt îngropate de procentul de completitudine. Când ai ales un singur ingredient sau folosești filtrele stricte, rezultatele se împart în „Gata de făcut" (verde, nu lipsește nimic), „Aproape — îți mai trebuie 1–2" (portocaliu) și „Idei cu ce ai" (gri, mai departe). În grupurile „aproape" și „idei", fiecare card poartă un badge „Lipsește N" care spune exact câte ingrediente mai sunt necesare. Astfel prioritatea se vede din structură, nu doar din procent — iar utilizatorul nu primește niciodată un ecran gol când are ingrediente selectate.
 
-**Filtre rapide + „Surprinde-mă"** — un singur radio alege cât de strict caut (nu se combină; are mereu o valoare selectată vizibil). Sub rânduri apare o linie de explicație pentru opțiunea activă, iar fiecare pastilă are și un tooltip cu aceeași descriere. Radio-ul restrânge doar ce se afișează, nu schimbă algoritmul:
+**Filtre rapide + „Surprinde-mă"** — un singur radio alege cât de strict caut (nu se combină; are mereu o valoare selectată vizibil). Sub rânduri apare o linie de explicație pentru opțiunea activă, iar fiecare pastilă are și un tooltip cu aceeași descriere. Radio-ul schimbă setul afișat și ordinea lui, dar nu schimbă matchingul brut:
 
-- **Toate** (implicit) — model frigider: orice rețetă care folosește *măcar un* ingredient pe care îl ai.
+- **Toate** (implicit) — model frigider: orice rețetă care folosește *măcar un* ingredient pe care îl ai. Ordinea respectă întâi intenția selecției: rețetele care folosesc toate ingredientele alese, apoi cele care folosesc cele mai multe.
 - **Folosesc tot ce-am ales** — rețete care folosesc *fiecare* ingredient selectat (nimic din ce ai ales nu e ignorat); pot lipsi încă lucruri pe care nu le ai. Util pentru „am X, Y, Z — ce e construit fix pe astea?".
-- **Exact ce am ales** — ca mai sus *și* gata de făcut: selecția ta = rețeta. Cel mai strict.
 - **Gata de făcut** — rețete pe care le poți face acum (nu lipsește nimic), dar care pot ignora ingrediente în plus pe care le-ai ales.
 
 Substituțiile contează: dacă o rețetă cere feta și ai ales telemea, telemea e considerată „folosită". Radio-ul nativ (ascuns vizual sub pastile) oferă navigare cu săgețile pentru tastatură; descrierea e `aria-live` ca să fie anunțată la schimbare. Tot blocul apare doar când există o selecție și rezultate.
 
 **„Surprinde-mă" deschide un dialog (popup), nu un card în listă** — alege o singură rețetă din setul filtrat (preferând cele gata de făcut) și o arată suprapus peste pagină, cu „Altă sugestie" (re-roll) și „Închide". Motivul: o sugestie inserată în lista de rezultate se confunda cu rezultatele normale; un dialog o face un moment distinct („uite una pentru tine") și, la închidere, lista rămâne exact unde era. Dialogul e accesibil — `role="dialog"`, `aria-modal`, focusul intră în el, Tab e prins înăuntru, Escape / click pe fundal / „Închide" îl închid și readuc focusul pe butonul „Surprinde-mă"; fundalul nu se mai poate derula cât e deschis.
 
-**Vot pe rețetă (👍/👎)** — fiecare card are două butoane discrete jos-dreapta: un „îmi place" și un „nu-mi place". Votul nu ascunde și nu deblochează nimic — doar *înclină* cât de des apare rețeta. În listă e un criteriu de sortare prioritar (un 👍 urcă rețeta, un 👎 o coboară), deci o rețetă plăcută are mai multe șanse să fie văzută și să încapă sub plafonul de la „Idei", iar una respinsă mai puține. La „Surprinde-mă" e o pondere de eșantionare (👍 ≈ 3×, 👎 ≈ ¼ față de neutru). Decizia cheie: un 👎 *scade* probabilitatea, nu o anulează — rămâne consecvent cu regula „o selecție nu primește niciodată «nimic»". Nivelurile (`tierOf`) rămân oneste pentru că se calculează din completitudine, nu din ordinea de sortare. Butoanele apar pe același card și în lista de rezultate, și în dialogul „Surprinde-mă" (e același `renderCard`).
+**Vot pe rețetă (👍/👎)** — fiecare card are două butoane discrete jos-dreapta: un „îmi place" și un „nu-mi place". Votul nu ascunde și nu deblochează nimic — doar *înclină* cât de des apare rețeta. În listă e un criteriu de departajare după intenția filtrului activ (un 👍 urcă rețeta între opțiuni la fel de relevante, un 👎 o coboară), deci o rețetă plăcută are mai multe șanse să fie văzută și să încapă sub plafonul de la „Idei", fără să bată ingredientele selectate. La „Surprinde-mă" e o pondere de eșantionare (👍 ≈ 3×, 👎 ≈ ¼ față de neutru). Decizia cheie: un 👎 *scade* probabilitatea, nu o anulează — rămâne consecvent cu regula „o selecție nu primește niciodată «nimic»". Nivelurile (`tierOf`) rămân oneste pentru că se calculează din completitudine, nu din ordinea de sortare. Butoanele apar pe același card și în lista de rezultate, și în dialogul „Surprinde-mă" (e același `renderCard`).
 
 **Persistență locală + export** — voturile se salvează în `localStorage` (cheia `salatica.votes.v1`), un dicționar `nume rețetă → 1/-1`. Am ales `localStorage`, nu IndexedDB, deliberat: payload-ul e de câteva zeci de intrări, întreaga aplicație se randează *sincron*, iar API-ul asincron al IndexedDB ar fi însemnat ori blocarea primului paint pe un promise, ori un „flash" de stare nevotată — complexitate fără câștig la scara asta. Tot accesul la storage e în `try/catch`, deci în browsere cu storage dezactivat (mod privat) aplicația merge la fel, doar că voturile nu persistă. La încărcare, intrările se curăță (se păstrează doar rețete care încă există și valori `±1`). O acțiune în footer („Exportă preferințele") descarcă voturile ca fișier JSON (`salatica-preferinte.json`, cu `app`/`version`/`exportedAt`); dacă nu ai votat încă nimic, butonul afișează un mesaj scurt în loc să descarce un fișier gol.
 
@@ -120,7 +119,7 @@ Substituțiile contează: dacă o rețetă cere feta și ai ales telemea, teleme
 1. **Ingredientele în plus nu descalifică niciodată o rețetă.** Dacă ai ceva ce o rețetă nu folosește, rețeta tot apare — un frigider mai plin înseamnă mai multe opțiuni, nu mai puține (opusul comportamentului inițial, unde un ingredient în plus ascundea rețete).
 2. **Selecția ta nu primește niciodată „nimic".** Orice rețetă care folosește măcar un ingredient pe care îl ai apare în rezultate. Pragurile de mai jos doar *prioritizează*, nu *exclud* — așa că „am doar ton" îți arată salatele cu ton, nu un ecran gol.
 
-Pentru fiecare salată calculăm câte ingrediente ai (direct sau printr-un substitut) din total → procent, și o încadrăm într-un nivel (`tierOf`): **gata de făcut** (nu lipsește nimic), **aproape** (lipsesc 1–2 și ai deja majoritatea rețetei), sau **idei** (restul — rețete în care intră ce ai, dar mai departe). Sortare în fiecare nivel: cea mai completă întâi. Nivelul „idei" e plafonat (8 carduri) ca un singur ingredient foarte comun să nu umple ecranul.
+Pentru fiecare salată calculăm câte ingrediente ai (direct sau printr-un substitut) din total → procent, și o încadrăm într-un nivel (`tierOf`): **gata de făcut** (nu lipsește nimic), **aproape** (lipsesc 1–2 și ai deja majoritatea rețetei), sau **idei** (restul — rețete în care intră ce ai, dar mai departe). Rankingul este specific filtrului: `Toate` pune întâi rețetele care folosesc cât mai multe ingrediente selectate, `Folosesc tot ce-am ales` sortează după completitudine, iar `Gata de făcut` pune întâi rețetele gata care folosesc cele mai multe alegeri curente. Nivelul „idei" e plafonat (8 carduri) ca un singur ingredient foarte comun să nu umple ecranul.
 
 
 ## Harta codului — unde trăiește fiecare lucru (totul în `index.html`)
@@ -135,10 +134,12 @@ detaliu e descris în secțiunile de mai sus; aici e doar „ce identificator, u
 - `SUB_GROUPS` / `SUBS` — ingrediente interschimbabile (feta ⇄ telemea,
   pin ⇄ floarea ⇄ dovleac). Selectarea oricărui membru satisface o rețetă care
   cere altul; cardul arată tot ingredientul canonic al rețetei + un indiciu „sau …".
-- `computeMatches` — algoritmul de matching; `tierOf` încadrează în nivel.
+- `computeMatches` — algoritmul de matching; `tierOf` încadrează în nivel,
+  iar comparatoarele filtrelor (`compareAll`, `compareCompletion`,
+  `compareReady`) stabilesc ordinea pentru fiecare mod de căutare.
   Fiecare match poartă și `idx` (poziția în `SALADS`, folosită ca handle stabil
-  în DOM pentru butoanele de vot) și `vote` (votul curent, primul criteriu de
-  sortare). Funcțiile `render*` construiesc DOM-ul.
+  în DOM pentru butoanele de vot) și `vote` (votul curent, folosit ca
+  departajare). Funcțiile `render*` construiesc DOM-ul.
 - **Votare** — `VOTES_KEY`, `votes` (dicționar `nume → ±1`), `loadVotes` /
   `saveVotes` (cu `try/catch` în jurul `localStorage`, deci sigure și fără DOM —
   validatorul rulează fișierul fără să arunce), `voteOf`, `setVote` (toggle pe

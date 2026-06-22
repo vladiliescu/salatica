@@ -19,3 +19,11 @@ python3 -m http.server 8000
 Then open http://localhost:8000.
 
 That's it. Drop the folder on any static host (GitHub Pages, Netlify, …) and it's live.
+Dev-only scripts live in `scripts/` and are excluded from common static deploys.
+
+## Checks
+
+```sh
+node --test scripts/ranking.test.mjs
+node scripts/validate.mjs
+```
