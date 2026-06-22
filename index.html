@@ -597,6 +597,14 @@
       padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
       background: linear-gradient(to top, var(--bg) 65%, rgba(248,246,241,0));
       pointer-events: none;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .results-bar.hidden {
+      opacity: 0;
+      transform: translateY(100%);
+      pointer-events: none;
     }
     .results-bar button {
       pointer-events: auto;
@@ -616,8 +624,6 @@
       transition: opacity 0.25s ease, transform 0.25s ease;
     }
     .results-bar.hidden button {
-      opacity: 0;
-      transform: translateY(140%);
       pointer-events: none;
     }
   }
@@ -1436,6 +1442,7 @@ function bindEvents() {
   if (barBtn) {
     barBtn.addEventListener('click', () => {
       const results = document.getElementById('results');
+      document.getElementById('results-bar')?.classList.add('hidden');
       if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
