@@ -93,6 +93,77 @@
     margin-bottom: 20px;
   }
   .category:last-child { margin-bottom: 0; }
+
+  /* Bottom-of-panel control to fold the chip wall away once you're done picking. */
+  .panel-collapse {
+    display: block;
+    margin: 18px auto 0;
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .panel-collapse:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* Collapsed "fridge" summary — replaces the chip wall once you've picked, so
+     the results get the screen. Tap it (or Editează) to expand the panel again. */
+  .fridge-summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border-radius: 14px;
+    padding: 12px 16px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+  }
+  .fridge-summary-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fridge-summary-main:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 8px; }
+  .fs-count {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary);
+  }
+  .fs-list {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+  .fs-edit {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    color: var(--muted);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 4px 11px;
+    transition: all 0.2s ease;
+  }
+  .fridge-summary-main:hover .fs-edit,
+  .fridge-summary-main:focus-visible .fs-edit { border-color: var(--primary); color: var(--primary); }
   .category-label {
     font-size: 0.75rem;
     font-weight: 600;
@@ -1029,6 +1100,7 @@ const app = document.getElementById('app');
 let selected = new Set();
 let votes = loadVotes();    // recipe name → 1 (👍) / -1 (👎); persisted in localStorage
 let activeFilter = 'all';   // which strictness radio is selected (see FILTERS)
+let panelCollapsed = false; // once you've picked, fold the chip wall into a summary bar
 let surprise = null;        // name of the featured recipe when "Surprinde-mă" is on
 let resultsObserver = null; // hides the mobile bar once results scroll into view
 
@@ -1054,6 +1126,12 @@ function render() {
 }
 
 function renderIngredients() {
+  // Once you've picked something, the full chip wall is just a thing to scroll
+  // past on the way to results — so fold it into a one-line summary. Editing
+  // (Editează / tapping the summary) expands it again. With nothing selected
+  // there's nothing to summarise, so the panel always stays open.
+  if (selected.size > 0 && panelCollapsed) return renderFridgeSummary();
+
   let html = '<div class="ingredients-panel">';
   CATEGORIES.forEach(cat => {
     const items = INGREDIENTS.filter(i => i.cat === cat.id);
@@ -1067,12 +1145,34 @@ function renderIngredients() {
     });
     html += '</div></div>';
   });
+  if (selected.size > 0) {
+    html += `<button type="button" class="panel-collapse" id="collapse-ingredients" aria-expanded="true">Restrânge ↑</button>`;
+  }
   html += '</div>';
   return html;
 }
 
+// The collapsed stand-in for the chip panel: how many you've picked, the names
+// (ellipsised to one line), and a way back to editing. Reuses the #clear-all id
+// so the existing reset handler works — only one of panel/summary renders at a
+// time, so the id is never duplicated.
+function renderFridgeSummary() {
+  const names = [...selected].map(id => ingredientMap[id]);
+  const n = names.length;
+  return `<div class="fridge-summary">
+    <button type="button" class="fridge-summary-main" id="edit-ingredients" aria-expanded="false"
+      aria-label="${n} ingrediente alese — atinge pentru a edita">
+      <span class="fs-count">Ai ${n}</span>
+      <span class="fs-list">${names.join(' · ')}</span>
+      <span class="fs-edit" aria-hidden="true">✎ Editează</span>
+    </button>
+    <button type="button" class="clear-btn" id="clear-all" aria-label="Resetează ingredientele">✕</button>
+  </div>`;
+}
+
 function renderCounter() {
   if (selected.size === 0) return '';
+  if (panelCollapsed) return '';   // the summary bar already shows the count + reset
   return `<div class="counter">
     <strong>${selected.size}</strong> ingredient${selected.size > 1 ? 'e' : ''} selectat${selected.size > 1 ? 'e' : ''}
     &nbsp;·&nbsp;
@@ -1278,6 +1378,10 @@ function bindEvents() {
       const id = chip.dataset.id;
       if (selected.has(id)) selected.delete(id);
       else selected.add(id);
+      // Collapsing only makes sense with a selection; keep the flag consistent
+      // so re-selecting later always starts from an open panel, never a stale
+      // collapsed one.
+      if (selected.size === 0) panelCollapsed = false;
       rerenderKeepingFocus(`.chip[data-id="${id}"]`);
     });
   });
@@ -1336,11 +1440,27 @@ function bindEvents() {
     });
   }
 
+  // Fold the chip wall into the summary bar; land focus on its "Editează" so a
+  // keyboard user stays on the equivalent control after the re-render.
+  const collapseBtn = document.getElementById('collapse-ingredients');
+  if (collapseBtn) collapseBtn.addEventListener('click', () => {
+    panelCollapsed = true;
+    rerenderKeepingFocus('#edit-ingredients');
+  });
+
+  // Expand again — focus the panel's collapse control (its counterpart).
+  const editBtn = document.getElementById('edit-ingredients');
+  if (editBtn) editBtn.addEventListener('click', () => {
+    panelCollapsed = false;
+    rerenderKeepingFocus('#collapse-ingredients');
+  });
+
   const clearBtn = document.getElementById('clear-all');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
       selected.clear();
       activeFilter = 'all';
+      panelCollapsed = false;
       surprise = null;
       render();
     });
