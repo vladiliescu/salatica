@@ -628,11 +628,176 @@
     }
   }
 
+  /* ── Active recipe shopping list ── */
+  .active-shopping {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 28px;
+    border-left: 4px solid var(--primary);
+  }
+  .active-shopping.just-activated {
+    animation: active-slide 0.25s ease;
+  }
+  @keyframes active-slide {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .active-shopping.just-activated { animation: none; }
+  }
+  .active-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .active-header .card-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.2rem;
+    color: var(--text);
+  }
+  .active-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+  .active-done-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .active-done-btn:hover { background: #4A6A4C; }
+
+  .shopping-list {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+  }
+  .shopping-item {
+    border-bottom: 1px solid var(--border);
+  }
+  .shopping-item:last-child { border-bottom: none; }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 4px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .check-item:hover { background: rgba(0,0,0,0.015); }
+  .check-item:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 8px; }
+
+  .shopping-check {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 2px solid var(--missing);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    background: transparent;
+  }
+  .shopping-item.checked .shopping-check {
+    border-color: var(--primary);
+    background: var(--primary);
+  }
+  .shopping-check-mark {
+    opacity: 0;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    transition: opacity 0.15s;
+  }
+  .shopping-item.checked .shopping-check-mark { opacity: 1; }
+
+  .shopping-label {
+    font-size: 0.9rem;
+    color: var(--text);
+    transition: all 0.2s;
+  }
+  .shopping-item.checked .shopping-label {
+    text-decoration: line-through;
+    color: var(--missing);
+  }
+
+  .cooking-section {
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .cooking-section .card-dressing {
+    margin-bottom: 10px;
+  }
+  .cooking-section .card-tip {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .active-celebration {
+    text-align: center;
+    padding: 10px 0 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .activate-btn {
+    background: none;
+    border: 1.5px solid var(--primary);
+    border-radius: 18px;
+    padding: 4px 12px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--primary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .activate-btn:hover {
+    background: var(--primary-light);
+  }
+  .activate-btn.is-active {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+    cursor: default;
+    opacity: 0.7;
+  }
+
   @media (max-width: 480px) {
     header h1 { font-size: 1.7rem; }
     .ingredients-panel { padding: 18px 16px; }
     .salad-card { padding: 16px; }
     .chip { padding: 6px 12px; font-size: 0.82rem; }
+    .active-shopping { padding: 16px; }
   }
 </style>
 </head>
@@ -1051,6 +1216,57 @@ function weightedPick(pool) {
   return pool[pool.length - 1];
 }
 
+// ─── ACTIVE RECIPE (shopping list) ──────────────────────────────
+// One recipe can be "active" — turned into an in-place shopping checklist that
+// survives restarts. Stored alongside votes in localStorage.
+const ACTIVE_KEY = 'salatica.active.v1';
+
+function loadActive() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ACTIVE_KEY));
+    if (!raw || typeof raw !== 'object' || typeof raw.recipe !== 'string') return null;
+    const salad = SALADS.find(s => s.name === raw.recipe);
+    if (!salad) return null;
+    const valid = new Set(salad.ingredients);
+    const checked = new Set(Array.isArray(raw.checked) ? raw.checked.filter(id => valid.has(id)) : []);
+    return { recipe: raw.recipe, checked };
+  } catch { return null; }
+}
+
+function saveActive() {
+  try {
+    if (!activeRecipe) { localStorage.removeItem(ACTIVE_KEY); return; }
+    localStorage.setItem(ACTIVE_KEY, JSON.stringify({
+      recipe: activeRecipe.recipe,
+      checked: [...activeRecipe.checked],
+    }));
+  } catch {}
+}
+
+function setActive(recipeName) {
+  const salad = SALADS.find(s => s.name === recipeName);
+  const seeded = salad ? new Set(salad.ingredients.filter(id => isSatisfied(id, selected))) : new Set();
+  activeRecipe = { recipe: recipeName, checked: seeded };
+  activeJustSet = true;
+  saveActive();
+  rerenderKeepingFocus('#clear-active');
+  document.getElementById('active-shopping')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function clearActive() {
+  activeRecipe = null;
+  saveActive();
+  rerenderKeepingFocus('#results');
+}
+
+function toggleChecked(id) {
+  if (!activeRecipe) return;
+  if (activeRecipe.checked.has(id)) activeRecipe.checked.delete(id);
+  else activeRecipe.checked.add(id);
+  saveActive();
+  rerenderKeepingFocus(`.check-item[data-ing="${id}"]`);
+}
+
 // ─── FILTERS ────────────────────────────────────────────────────
 // A single radio chooses how strict the match is; "Surprinde-mă" picks one
 // recipe from the chosen set so you don't have to — the "take a position"
@@ -1130,6 +1346,8 @@ function applyFilters(matches) {
 const app = document.getElementById('app');
 let selected = new Set();
 let votes = loadVotes();    // recipe name → 1 (👍) / -1 (👎); persisted in localStorage
+let activeRecipe = loadActive(); // { recipe: string, checked: Set<string> } | null
+let activeJustSet = false;   // one-shot flag for the slide-in animation
 let activeFilter = 'all';   // which strictness radio is selected (see FILTERS)
 let panelCollapsed = false; // once you've picked, fold the chip wall into a summary bar
 let surprise = null;        // name of the featured recipe when "Surprinde-mă" is on
@@ -1145,7 +1363,8 @@ function render() {
     renderIngredients() +
     renderCounter() +
     renderFilters(allMatches) +
-    `<div id="results">${renderResults(matches)}</div>` +
+    renderActiveCard() +
+    `<div id="results" tabindex="-1">${renderResults(matches)}</div>` +
     renderResultsBar(matches) +
     renderSurpriseModal(matches);
 
@@ -1292,6 +1511,48 @@ function renderTieredResults(matches) {
   return html;
 }
 
+function renderActiveCard() {
+  if (!activeRecipe) return '';
+  const salad = SALADS.find(s => s.name === activeRecipe.recipe);
+  if (!salad) return '';
+
+  const allChecked = salad.ingredients.every(id => activeRecipe.checked.has(id));
+
+  let items = salad.ingredients.map(id => {
+    const done = activeRecipe.checked.has(id);
+    return `<li class="shopping-item${done ? ' checked' : ''}">
+      <button type="button" class="check-item" data-ing="${id}"
+        aria-pressed="${done}" aria-label="${ingredientMap[id]}">
+        <span class="shopping-check"><span class="shopping-check-mark" aria-hidden="true">✓</span></span>
+        <span class="shopping-label">${tagLabel(id)}</span>
+      </button>
+    </li>`;
+  }).join('');
+
+  const celebration = allChecked
+    ? `<div class="active-celebration" role="status">✨ Ai tot ce trebuie! Gătește cu drag!</div>`
+    : '';
+
+  const animClass = activeJustSet ? ' just-activated' : '';
+  activeJustSet = false;
+
+  return `<div class="active-shopping${animClass}" id="active-shopping">
+    <div class="active-header">
+      <div>
+        <div class="active-label">Pregătești acum</div>
+        <div class="card-name">${salad.name}</div>
+      </div>
+      <button type="button" class="active-done-btn" id="clear-active">Gata!</button>
+    </div>
+    <ul class="shopping-list">${items}</ul>
+    ${celebration}
+    <div class="cooking-section">
+      <div class="card-dressing"><strong>Dressing:</strong> ${salad.dressing}</div>
+      <div class="card-tip">${salad.tip}</div>
+    </div>
+  </div>`;
+}
+
 function renderCard(s) {
   const tier = tierOf(s);
   const cardClass = tier === 0 ? ' ready' : tier === 1 ? ' almost' : ' idea';
@@ -1331,6 +1592,10 @@ function renderCard(s) {
     <div class="card-dressing"><strong>Dressing:</strong> ${s.dressing}</div>
     <div class="card-tip">${s.tip}</div>
     <div class="card-actions">
+      ${activeRecipe && activeRecipe.recipe === s.name
+        ? `<button type="button" class="activate-btn is-active" disabled>Activ ✓</button>`
+        : `<button type="button" class="activate-btn" data-idx="${s.idx}"
+            aria-label="Pregătește ${s.name}">Pregătește asta</button>`}
       <button type="button" class="vote-btn up${s.vote === 1 ? ' on' : ''}"
         data-vote="1" data-idx="${s.idx}" aria-pressed="${s.vote === 1}"
         aria-label="Îmi place — arată-mi-o mai des"><span aria-hidden="true">👍</span></button>
@@ -1432,6 +1697,20 @@ function bindEvents() {
       rerenderKeepingFocus(`.chip[data-id="${id}"]`);
     });
   });
+
+  document.querySelectorAll('.activate-btn:not(.is-active)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.closest('#surprise-modal')) surprise = null;
+      setActive(SALADS[Number(btn.dataset.idx)].name);
+    });
+  });
+
+  document.querySelectorAll('.check-item').forEach(btn => {
+    btn.addEventListener('click', () => toggleChecked(btn.dataset.ing));
+  });
+
+  const clearActiveBtn = document.getElementById('clear-active');
+  if (clearActiveBtn) clearActiveBtn.addEventListener('click', clearActive);
 
   document.querySelectorAll('.vote-btn').forEach(btn => {
     btn.addEventListener('click', () => {
